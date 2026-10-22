@@ -283,13 +283,14 @@
   - [x] Verify TypeScript compilation (`npx tsc --noEmit`)
   - [x] Test in browser subagent: verify visiting `http://localhost:3000/` unauthenticated directly loads `/login` without flashing dashboard
 
-- [ ] **Step 39: Push to Git & Deploy to Production Server**
-  - [ ] Stage all modified and new files (Login slideshow, brand logo, clean curves, edge auth proxy)
-  - [ ] Commit with descriptive message
-  - [ ] Push to GitHub (`origin/main`)
-  - [ ] Pull on Hostinger VPS (`/var/www/smartup-online-erp`)
-  - [ ] Rebuild production Next.js bundle (`npm ci && npm run build`)
-  - [ ] Gracefully reload PM2 process (`pm2 reload smartup-online-erp`)
-  - [ ] Verify live domain `https://smartuplearning.online`
+- [x] **Step 39: Push to Git & Deploy to Production Server**
+  - [x] Stage all modified and new files (Login slideshow, brand logo, clean curves, edge auth proxy)
+  - [x] Commit with descriptive message (`feat(ui): login hero slideshow, brand logo integration, and edge auth proxy`)
+  - [x] Push to GitHub (`origin/main` at `https://github.com/arjun-smartup/smartup-online-erp.git`)
+  - [x] Pull on Hostinger VPS (`/var/www/smartup-online-erp`)
+  - [x] Rebuild production Next.js bundle (`npm ci && npm run build`)
+  - [x] Gracefully reload PM2 process (`pm2 reload smartup-online-erp`)
+  - [x] Verify live domain `https://smartuplearning.online` with 200 OK and active Cloudflare SSL
+
 
 
