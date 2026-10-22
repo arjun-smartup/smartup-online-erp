@@ -1,15 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Mail, 
   Eye, 
   EyeOff, 
   AlertCircle, 
-  MessageCircle, 
   ChevronDown
 } from "lucide-react";
+
+const HERO_SLIDES = [
+  {
+    src: "/images/hero-1.png",
+    alt: "Father and daughter learning together with SmartUp",
+  },
+  {
+    src: "/images/hero-2.png",
+    alt: "Parent mentoring student with SmartUp curriculum",
+  },
+  {
+    src: "/images/hero-3.png",
+    alt: "Interactive SmartUp classroom and mentorship session",
+  },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,6 +32,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Auto-advance hero slides every 5 seconds, resetting cleanly on manual selection
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [currentSlide]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,23 +79,55 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-white text-slate-800 font-sans antialiased overflow-x-hidden">
       
       {/* ========================================================= */}
-      {/* LEFT COLUMN: Lifestyle Duotone Photo with Responsive Wave  */}
+      {/* LEFT COLUMN: Lifestyle Hero Slideshow with Organic Curve   */}
       {/* ========================================================= */}
-      <div className="w-full md:w-[48%] lg:w-[48%] relative h-[210px] sm:h-[250px] md:h-screen md:min-h-screen overflow-hidden bg-white shrink-0">
-        {/* Duotone Candid Photo */}
-        <img
-          src="/images/login-hero-v2.jpg"
-          alt="Family using smart education platform"
-          className="w-full h-full object-cover object-[center_25%]"
-        />
+      <div className="w-full md:w-[48%] lg:w-[48%] relative h-[260px] sm:h-[300px] md:h-screen md:min-h-screen overflow-hidden bg-white shrink-0 select-none">
+        {/* Slides Container */}
+        {HERO_SLIDES.map((slide, index) => {
+          const isActive = index === currentSlide;
+          return (
+            <div
+              key={slide.src}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                isActive ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+              }`}
+            >
+              <img
+                src={slide.src}
+                alt={slide.alt}
+                className="w-full h-full object-cover object-[center_50%] md:object-[center_30%] transition-transform duration-[7000ms] ease-out"
+                style={{
+                  transform: isActive ? "scale(1.04)" : "scale(1.0)",
+                }}
+              />
+            </div>
+          );
+        })}
 
-        {/* Gentle Soft Indigo Duotone Tint Layer */}
-        <div className="absolute inset-0 bg-[#25316e]/15 mix-blend-multiply pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#1b2452]/40 via-transparent to-transparent pointer-events-none" />
+        {/* Slideshow Indicator Dots */}
+        <div className="absolute bottom-6 sm:bottom-8 md:bottom-8 left-5 sm:left-8 z-30 flex items-center gap-1.5 pointer-events-auto">
+          {HERO_SLIDES.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setCurrentSlide(idx)}
+              aria-label={`Jump to hero slide ${idx + 1}`}
+              className="py-2.5 px-1 flex items-center justify-center cursor-pointer group"
+            >
+              <span
+                className={`h-1.5 rounded-full transition-all duration-500 block ${
+                  idx === currentSlide
+                    ? "w-7 bg-white shadow-md shadow-black/40"
+                    : "w-2 bg-white/60 group-hover:bg-white/90 shadow-xs shadow-black/20"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
 
         {/* Desktop: Vertical Organic Wave / Concave S-Curve Boundary into Right White Panel */}
         <svg
-          className="absolute top-0 right-[-1px] h-full w-16 sm:w-20 lg:w-28 text-white fill-current pointer-events-none hidden md:block"
+          className="absolute top-0 right-[-1px] h-full w-16 sm:w-20 lg:w-28 text-white fill-current pointer-events-none hidden md:block z-20"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
         >
@@ -81,7 +136,7 @@ export default function LoginPage() {
 
         {/* Mobile: Horizontal Organic Curved Cut Boundary into the Bottom White Form */}
         <svg
-          className="absolute -bottom-1 left-0 w-full h-11 sm:h-14 text-white fill-current pointer-events-none md:hidden"
+          className="absolute -bottom-1 left-0 w-full h-11 sm:h-14 text-white fill-current pointer-events-none md:hidden z-20"
           viewBox="0 0 1000 100"
           preserveAspectRatio="none"
         >
@@ -92,7 +147,7 @@ export default function LoginPage() {
       {/* ========================================================= */}
       {/* RIGHT COLUMN: Full-Height Form, Centered Rhythm & Footer */}
       {/* ========================================================= */}
-      <div className="w-full md:w-[52%] lg:w-[52%] flex-1 -mt-1 md:mt-0 md:min-h-screen md:h-screen flex flex-col justify-between p-5 sm:p-8 lg:p-12 xl:p-16 bg-[#fafbfc] relative z-20 overflow-y-auto">
+      <div className="w-full md:w-[52%] lg:w-[52%] flex-1 md:min-h-screen md:h-screen flex flex-col justify-between p-5 sm:p-8 lg:p-12 xl:p-16 bg-white relative z-20 overflow-y-auto">
         
         {/* Ambient Glassmorphism Light Glows */}
         <div className="absolute top-[18%] right-[10%] w-80 h-80 rounded-full bg-indigo-100/50 blur-3xl pointer-events-none -z-10" />
@@ -104,10 +159,17 @@ export default function LoginPage() {
         <div className="w-full max-w-[430px] sm:max-w-[470px] lg:max-w-[480px] mx-auto md:my-auto py-3 sm:py-6 space-y-6 sm:space-y-7">
           
           {/* Header: Logo & Tagline */}
-          <div className="text-center space-y-1.5">
-            <h1 className="text-[36px] sm:text-[42px] font-black text-[#1d2766] tracking-tight leading-none">
-              smartup
-            </h1>
+          <div className="text-center space-y-2">
+            <div className="flex items-center justify-center gap-2.5 sm:gap-3">
+              <img
+                src="/images/smartup-logo.png"
+                alt="SmartUp Owl Logo"
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-sm select-none"
+              />
+              <h1 className="text-[36px] sm:text-[42px] font-black text-[#1d2766] tracking-tight leading-none">
+                smartup
+              </h1>
+            </div>
             <p className="text-xs sm:text-[14px] text-[#34428e] font-medium tracking-normal">
               Make parents proud
             </p>
@@ -211,25 +273,16 @@ export default function LoginPage() {
 
         </div>
 
-        {/* Bottom Footer: Language Dropdown & Support */}
-        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-6 mt-4 border-t border-slate-200/60 max-w-[430px] sm:max-w-[470px] lg:max-w-[480px] w-full mx-auto">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 hover:text-slate-800 transition-colors cursor-pointer"
-            >
-              <span>English (Inglés)</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => alert("SmartUp Online Help Desk: +91 484 290 0000")}
-              className="inline-flex items-center gap-1.5 text-slate-600 hover:text-[#242f68] transition-colors cursor-pointer font-medium"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-[#3b4a8e]" />
-              <span>Get Support</span>
-            </button>
-          </div>
+        {/* Bottom Footer: Language Dropdown */}
+        <div className="flex items-center justify-center text-[11px] text-slate-500 pt-6 mt-4 border-t border-slate-200/60 max-w-[430px] sm:max-w-[470px] lg:max-w-[480px] w-full mx-auto">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 hover:text-slate-800 transition-colors cursor-pointer"
+          >
+            <span>English (Inglés)</span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
+        </div>
 
         </div>
 

@@ -234,3 +234,62 @@
   - [x] Enhanced primary CTA button with tactile 3D gradient, top specular edge, and multi-layer elevation shadow
   - [x] Verified zero TypeScript compilation errors (`npx tsc --noEmit`) and visually inspected on desktop and mobile viewports
 
+- [x] **Step 33: Update Login Hero Image & Integrate SmartUp Logo**
+  - [x] Copy user assets from Downloads (`Smartup Family Learning Moment.png` & `PSD NOBG-Photoroom.png`) to `public/images/`
+  - [x] Update `src/app/login/page.tsx` with the new hero image (`/images/smartup-family-hero.png`)
+  - [x] Adjust image overlay/tinting and positioning to let the warm family learning moment shine with the organic wave boundary
+  - [x] Add the official SmartUp logo (`/images/smartup-logo.png`) near the "smartup" brand header
+  - [x] Verify TypeScript types (`npx tsc --noEmit`)
+  - [x] Verify visual presentation across desktop and mobile in browser subagent
+
+- [x] **Step 34: Hero Images Slideshow & Old Image Purge**
+  - [x] Copy `hero.png`, `hero 2.png`, and `hero 3.png` from Downloads to `public/images/` as `hero-1.png`, `hero-2.png`, `hero-3.png`
+  - [x] Delete all obsolete hero images (`login-hero.jpg`, `login-hero-v2.jpg`, `smartup-family-hero.png`) from `public/images/`
+  - [x] Build a smooth auto-advancing slideshow with cross-fade transitions, Ken Burns micro-scaling, and interactive indicators in `src/app/login/page.tsx`
+  - [x] Maintain responsive wave borders (desktop S-curve and mobile bottom curve)
+  - [x] Verify TypeScript compilation (`npx tsc --noEmit`)
+  - [x] Verify smooth transition and visual rendering in browser subagent on desktop & mobile
+
+- [x] **Step 35: Remove White Wave Overlays on Desktop and Mobile**
+  - [x] Remove desktop vertical organic wave SVG overlay from `src/app/login/page.tsx`
+  - [x] Remove mobile bottom organic curved cut SVG overlay from `src/app/login/page.tsx`
+  - [x] Align desktop column layout to a clean 50/50 edge-to-edge split (`md:w-1/2`)
+  - [x] Clean up negative margins (`-mt-1`) and align mobile photo banner cleanly
+  - [x] Position slideshow indicator pills cleanly at the bottom of the photo
+  - [x] Verify TypeScript types (`npx tsc --noEmit`)
+  - [x] Verify clean, uncluttered presentation on desktop and mobile in browser subagent
+
+- [x] **Step 36: Restore Seamless Organic Curves with Pure White Background Alignment**
+  - [x] Restore desktop vertical S-curve SVG boundary (`path d="M100,0 L100,100 L44,100 C16,82 -2,64 6,42 C14,24 26,10 48,0 Z"`)
+  - [x] Restore mobile horizontal organic curved cut SVG boundary
+  - [x] Unify right panel background to pure `bg-white` (matching `smartuplearning.online/login`) so the curve blends with 0 seam or color mismatch
+  - [x] Position slide indicators on the left side of the hero photo away from the curve
+  - [x] Verify TypeScript types (`npx tsc --noEmit`)
+  - [x] Verify seamless aesthetic in browser subagent on desktop and mobile
+
+- [x] **Step 37: Remove "Get Support" from Login Page**
+  - [x] Remove "Get Support" button and alert handler from login page footer
+  - [x] Remove unused `MessageCircle` import from `lucide-react`
+  - [x] Center language dropdown in the footer
+  - [x] Verify TypeScript compilation (`npx tsc --noEmit`)
+  - [x] Verify visual presentation in browser
+
+- [x] **Step 38: Server-Side Edge Middleware & Flash-Free Auth Protection**
+  - [x] Create `src/proxy.ts` (Next.js 16 file convention replacing deprecated middleware.ts) with server-side route protection
+  - [x] Implement cookie verification for `smartup_session` / `sid`
+  - [x] Redirect unauthenticated users immediately from `/` and protected routes (`/students`, `/fees`, etc.) to `/login` with 0 flash (HTTP 307)
+  - [x] Redirect authenticated users from `/login` back to `/`
+  - [x] Update `src/components/layout/app-shell.tsx` with a render guard for client-side state
+  - [x] Verify TypeScript compilation (`npx tsc --noEmit`)
+  - [x] Test in browser subagent: verify visiting `http://localhost:3000/` unauthenticated directly loads `/login` without flashing dashboard
+
+- [ ] **Step 39: Push to Git & Deploy to Production Server**
+  - [ ] Stage all modified and new files (Login slideshow, brand logo, clean curves, edge auth proxy)
+  - [ ] Commit with descriptive message
+  - [ ] Push to GitHub (`origin/main`)
+  - [ ] Pull on Hostinger VPS (`/var/www/smartup-online-erp`)
+  - [ ] Rebuild production Next.js bundle (`npm ci && npm run build`)
+  - [ ] Gracefully reload PM2 process (`pm2 reload smartup-online-erp`)
+  - [ ] Verify live domain `https://smartuplearning.online`
+
+

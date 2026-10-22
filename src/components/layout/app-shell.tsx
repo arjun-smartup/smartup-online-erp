@@ -19,12 +19,16 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isAuthPage = pathname === "/login";
 
   useEffect(() => {
-    if (isAuthPage) return;
+    if (isAuthPage) {
+      setIsAuthenticated(false);
+      return;
+    }
 
     fetch("/api/auth/me")
       .then((res) => {
@@ -33,8 +37,10 @@ export function AppShell({ children }: AppShellProps) {
       })
       .then((data) => {
         setUserEmail(data.user?.email || "User");
+        setIsAuthenticated(true);
       })
       .catch(() => {
+        setIsAuthenticated(false);
         router.replace("/login");
       });
   }, [pathname, isAuthPage, router]);
@@ -53,6 +59,15 @@ export function AppShell({ children }: AppShellProps) {
   // Login page renders without shell
   if (isAuthPage) {
     return <>{children}</>;
+  }
+
+  // Prevent flash of unauthenticated dashboard content
+  if (isAuthenticated === false) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-xs text-slate-400">
+        Redirecting to login...
+      </div>
+    );
   }
 
   return (
@@ -88,7 +103,7 @@ export function AppShell({ children }: AppShellProps) {
               </div>
               <div className="hidden sm:block text-left">
                 <div className="font-bold text-slate-900 leading-tight">
-                  {userEmail || "apikey@gmail.com"}
+                  {userEmail || "Administrator"}
                 </div>
                 <div className="text-[10px] text-purple-600 font-semibold">Administrator</div>
               </div>
