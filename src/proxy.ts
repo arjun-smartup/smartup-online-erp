@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import type { UserSessionData } from "@/lib/types/auth";
 
 // Public routes accessible without authentication
 const PUBLIC_PATHS = [
@@ -28,8 +29,49 @@ export function proxy(request: NextRequest) {
 
   // 2. Authenticated users attempting to visit /login -> Redirect to Dashboard
   if (isAuthenticated && pathname === "/login") {
+    // If user has an explicit no_role error query, let them view /login
+    if (request.nextUrl.searchParams.get("error") === "no_role") {
+      const res = NextResponse.next();
+      res.cookies.delete("smartup_session");
+      res.cookies.delete("sid");
+      return res;
+    }
     const dashboardUrl = new URL("/", request.url);
     return NextResponse.redirect(dashboardUrl);
+  }
+
+  // 3. Role-Based Route Protection for authenticated users
+  if (isAuthenticated && sessionCookie) {
+    try {
+      const userSession: UserSessionData = JSON.parse(sessionCookie);
+
+      // Block users without an authorized primary role
+      if (!userSession.primaryRole) {
+        const loginUrl = new URL("/login?error=no_role", request.url);
+        const res = NextResponse.redirect(loginUrl);
+        res.cookies.delete("smartup_session");
+        res.cookies.delete("sid");
+        return res;
+      }
+
+      const isSalesUser = userSession.primaryRole === "Sales User";
+      const canViewFees = userSession.permissions?.canViewFees ?? !isSalesUser;
+      const canViewSettings = userSession.permissions?.canViewSystemStatus ?? !isSalesUser;
+
+      // Fees & Collections: Protected for Director only
+      if (!canViewFees && (pathname === "/fees" || pathname.startsWith("/fees/"))) {
+        const redirectUrl = new URL("/students?access=restricted_fees", request.url);
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      // Frappe System & Cloud Settings: Protected for Director only
+      if (!canViewSettings && (pathname === "/settings" || pathname.startsWith("/settings/"))) {
+        const redirectUrl = new URL("/students?access=restricted_settings", request.url);
+        return NextResponse.redirect(redirectUrl);
+      }
+    } catch {
+      // If parsing fails, allow standard flow
+    }
   }
 
   return NextResponse.next();

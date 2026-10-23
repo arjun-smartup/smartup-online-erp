@@ -8,6 +8,22 @@ const AUTH_HEADER = `token ${API_KEY}:${API_SECRET}`;
 
 export async function GET(req: NextRequest) {
   try {
+    // Role check: Enforce Director access
+    const sessionCookie = req.cookies.get("smartup_session")?.value;
+    if (sessionCookie) {
+      try {
+        const session = JSON.parse(sessionCookie);
+        if (session.primaryRole === "Sales User" || session.permissions?.canViewFees === false) {
+          return NextResponse.json(
+            { error: "Forbidden", message: "Fees & Collections data is restricted to Director role." },
+            { status: 403 }
+          );
+        }
+      } catch {
+        // Continue
+      }
+    }
+
     // 1. Fetch all Students without restrictive program filters (limit=1000 ensures full data)
     const studentsRes = await fetch(
       `${FRAPPE_URL}/api/resource/SmartUp%20Student?fields=["name","student_name","guardian_phone","country","admission_date","program","class_level","delivery_mode","course_type","batch_name","status"]&limit_page_length=1000`,

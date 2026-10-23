@@ -322,9 +322,18 @@
   - [x] Documented complete student-by-student reconciliation matrix in `STUDENT_FINANCIAL_RECONCILIATION_REPORT.md`
   - [x] Enhanced `/api/students/[id]` to query active Sales Orders ordered by `creation desc` and match ledger `gross_fee`
 
-- [x] **Step 42: Commit & Push Changes to Git Repository**
-  - [ ] Stage and commit accounting integration and audit improvements
-  - [ ] Push to `origin/main` (`https://github.com/arjun-smartup/smartup-online-erp.git`)
+- [x] **Step 43: Role-Based Access Control Architecture (Director & Sales User)**
+  - [x] Deep study of Frappe backend roles (`Sales User` verified existing, `Director` role creation required)
+  - [x] Define RBAC permission matrix for Director vs Sales User (Routes, APIs, Actions)
+  - [x] Implement backend `Director` role creation in Frappe Cloud and setup DocPerms
+  - [x] Implement role resolution and session enrichment in `/api/auth/login` and `/api/auth/me`
+  - [x] Configure server-side edge route protection in `src/proxy.ts` (Next.js middleware)
+  - [x] Adapt sidebar navigation and header HUD with role badges (`Director` vs `Sales User`)
+  - [x] Build role-aware Dashboard (`/`): Executive Financials for Director, Admissions & Enrollment for Sales User
+  - [x] Secure sensitive API routes (`/api/fees/*`, `/api/payments/*`) with server-side role verification
+  - [x] Strict Role Verification: Block any user without authorized Director or Sales User role with 403 and amber 'Access Restricted: No role assigned' warning banner
+  - [x] Test and verify all role flows end-to-end via automated browser testing (screenshots & video recorded)
+
 
 
 

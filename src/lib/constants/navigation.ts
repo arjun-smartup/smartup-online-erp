@@ -1,4 +1,5 @@
 import React from "react";
+import { UserPermissions } from "../types/auth";
 
 export interface NavItem {
   title: string;
@@ -8,6 +9,7 @@ export interface NavItem {
   badgeVariant?: "default" | "success" | "warning" | "danger" | "info";
   description?: string;
   children?: { title: string; href: string }[];
+  requiredPermission?: keyof UserPermissions;
 }
 
 export interface NavSection {
@@ -35,10 +37,12 @@ export const SMARTUP_NAV_ITEMS: NavItem[] = [
     title: "Fees & Collections",
     href: "/fees",
     iconName: "IndianRupee",
+    requiredPermission: "canViewFees",
   },
   {
     title: "Frappe Cloud Status",
     href: "/settings/frappe-status",
     iconName: "Activity",
+    requiredPermission: "canViewSystemStatus",
   },
 ];

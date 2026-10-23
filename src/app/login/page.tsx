@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Mail, 
   Eye, 
   EyeOff, 
   AlertCircle, 
+  ShieldAlert,
   ChevronDown
 } from "lucide-react";
 
@@ -27,12 +28,23 @@ const HERO_SLIDES = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [usr, setUsr] = useState("");
   const [pwd, setPwd] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isRoleRestricted, setIsRoleRestricted] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Check for error parameters in URL (e.g. redirected from proxy for no role)
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "no_role") {
+      setIsRoleRestricted(true);
+      setErrorMsg("Access Restricted: No role assigned. You do not have permission to access the SmartUp Online ERP portal. Please contact your system administrator.");
+    }
+  }, [searchParams]);
 
   // Auto-advance hero slides every 5 seconds, resetting cleanly on manual selection
   useEffect(() => {
@@ -45,6 +57,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    setIsRoleRestricted(false);
 
     if (!usr.trim() || !pwd.trim()) {
       setErrorMsg("Please enter both your email and password.");
@@ -63,9 +76,13 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        router.push("/");
-        router.refresh();
+        window.location.href = "/";
       } else {
+        if (res.status === 403 || data.code === "NO_ROLE_ASSIGNED") {
+          setIsRoleRestricted(true);
+        } else {
+          setIsRoleRestricted(false);
+        }
         setErrorMsg(data.message || "Invalid email or password.");
       }
     } catch {
@@ -185,10 +202,32 @@ export default function LoginPage() {
             {errorMsg && (
               <div 
                 role="alert" 
-                className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800 animate-in fade-in"
+                className={`p-4 rounded-2xl border flex items-start gap-3 text-xs animate-in fade-in slide-in-from-top-1 shadow-sm ${
+                  isRoleRestricted
+                    ? "bg-amber-50/95 border-amber-200/90 text-amber-900"
+                    : "bg-rose-50 border-rose-200 text-rose-800"
+                }`}
               >
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-                <span>{errorMsg}</span>
+                {isRoleRestricted ? (
+                  <div className="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 text-amber-700 mt-0.5 shadow-2xs">
+                    <ShieldAlert className="w-4 h-4" />
+                  </div>
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                )}
+                <div className="space-y-0.5 text-left">
+                  {isRoleRestricted && (
+                    <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                      <span>Access Restricted</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-amber-200/70 text-amber-900 font-mono">
+                        No Role Assigned
+                      </span>
+                    </div>
+                  )}
+                  <p className={isRoleRestricted ? "text-amber-800 leading-relaxed font-medium" : ""}>
+                    {errorMsg}
+                  </p>
+                </div>
               </div>
             )}
 
