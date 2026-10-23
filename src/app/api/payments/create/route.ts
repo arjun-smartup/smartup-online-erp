@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     let paidToAccount = "Cash - SU";
     let erpMode = "Cash";
     if (mode_of_payment.toLowerCase().includes("bank") || mode_of_payment.toLowerCase().includes("wire") || mode_of_payment.toLowerCase().includes("razorpay")) {
-      paidToAccount = "Bank Accounts - SU";
+      paidToAccount = "ACADEMIQEDU LEARNING LLP - SU";
       erpMode = "Wire Transfer";
     }
 
@@ -130,39 +130,9 @@ export async function POST(req: NextRequest) {
       console.warn("Could not submit payment entry, left in draft:", await peSubmitRes.text());
     }
 
-    // 4. Create custom SmartUp Fee Receipt for student ledger tracking
+    // 4. Update SmartUp Fee Ledger & create Fee Receipt
     let receiptName = null;
-    try {
-      const receiptPayload = {
-        naming_series: "SU-REC-.YYYY.-.#####",
-        student: student_id,
-        posting_date: postingDate,
-        amount_received: numericAmount,
-        currency: invoice.currency || "INR",
-        mode_of_payment: mode_of_payment,
-        transaction_reference: reference_no || paymentEntryName,
-        payment_status: "Successful",
-        remarks: `Payment recorded against ${invoice_name} (Payment Entry: ${paymentEntryName})`,
-      };
-
-      const recRes = await fetch(`${FRAPPE_URL}/api/resource/SmartUp%20Fee%20Receipt`, {
-        method: "POST",
-        headers: {
-          Authorization: AUTH_HEADER,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(receiptPayload),
-      });
-
-      if (recRes.ok) {
-        const recData = await recRes.json();
-        receiptName = recData.data?.name;
-      }
-    } catch (e) {
-      console.warn("Could not create SmartUp Fee Receipt:", e);
-    }
-
-    // 5. Update SmartUp Fee Ledger total_collected & pending_balance
+    let ledgerDocName = "";
     try {
       const ledgerFindRes = await fetch(
         `${FRAPPE_URL}/api/resource/SmartUp%20Fee%20Ledger?filters=[["student","=","${encodeURIComponent(student_id)}"]]&fields=["name","total_collected","pending_balance"]`,
@@ -172,6 +142,7 @@ export async function POST(req: NextRequest) {
         const ledgerList = await ledgerFindRes.json();
         if (ledgerList.data?.length > 0) {
           const ledgerDoc = ledgerList.data[0];
+          ledgerDocName = ledgerDoc.name;
           const newCollected = (Number(ledgerDoc.total_collected) || 0) + numericAmount;
           const newPending = Math.max(0, (Number(ledgerDoc.pending_balance) || 0) - numericAmount);
 
@@ -191,6 +162,40 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       console.warn("Fee Ledger update notice:", e);
+    }
+
+    // 5. Create custom SmartUp Fee Receipt for student ledger tracking
+    try {
+      const receiptPayload: Record<string, any> = {
+        naming_series: "SU-REC-.YYYY.-.#####",
+        student: student_id,
+        posting_date: postingDate,
+        amount_received: numericAmount,
+        currency: invoice.currency || "INR",
+        mode_of_payment: mode_of_payment,
+        transaction_reference: reference_no || paymentEntryName,
+        payment_status: "Successful",
+        remarks: `Payment recorded against ${invoice_name} (Payment Entry: ${paymentEntryName})`,
+      };
+      if (ledgerDocName) {
+        receiptPayload.fee_ledger = ledgerDocName;
+      }
+
+      const recRes = await fetch(`${FRAPPE_URL}/api/resource/SmartUp%20Fee%20Receipt`, {
+        method: "POST",
+        headers: {
+          Authorization: AUTH_HEADER,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(receiptPayload),
+      });
+
+      if (recRes.ok) {
+        const recData = await recRes.json();
+        receiptName = recData.data?.name;
+      }
+    } catch (e) {
+      console.warn("Could not create SmartUp Fee Receipt:", e);
     }
 
     return NextResponse.json({

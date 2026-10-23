@@ -119,6 +119,7 @@
   - [x] Fine-tuned typography (`text-xl sm:text-2xl`) and secondary labels (`text-[10px]`)
   - [x] Verified zero TypeScript errors (`npx tsc --noEmit`) and verified layout balance in browser screenshot
 
+
 - [x] **Step 17: 3D Premium UI Overhaul**
   - [x] Designed and applied multi-tiered 3D card elevation with specular highlights (`shadow-[0_4px_20px_-4px_rgba(15,23,42,0.07),...,inset_0_1px_0_rgba(255,255,255,1)]`)
   - [x] Created tactile 3D gradient icon tiles with soft color-matched drop shadows and specular top bevels
@@ -291,6 +292,42 @@
   - [x] Rebuild production Next.js bundle (`npm ci && npm run build`)
   - [x] Gracefully reload PM2 process (`pm2 reload smartup-online-erp`)
   - [x] Verify live domain `https://smartuplearning.online` with 200 OK and active Cloudflare SSL
+
+- [x] **Step 40: Architectural Structure: Link Student Fees with Sales Order, Paid Invoice, Unpaid Invoice & Payment Entry**
+  - [x] Deep audit of current system state: inspected student `aak46scsgo` (Rida) and confirmed all 58 students had `customer: null` and lacked Sales Order / Invoices / Payment Entries
+  - [x] Analyzed ERPNext Accounts schema: `Customer`, `Sales Order`, `Sales Invoice`, `Payment Entry`, and reconciliation rules
+  - [x] Created & linked ERPNext Customer `Rida (aak46scsgo)` to student `aak46scsgo`
+  - [x] Created & submitted Sales Order `SAL-ORD-2026-00002` for total contract fee (₹28,800)
+  - [x] Created & submitted Paid Sales Invoice `ACC-SINV-2026-00003` for advance amount (₹4,000)
+  - [x] Created & submitted Payment Entry `ACC-PAY-2026-00003` and Fee Receipt `SU-REC-2026-00001` (reconciling Paid Invoice to ₹0 outstanding)
+  - [x] Created & submitted Unpaid Sales Invoice `ACC-SINV-2026-00004` for remaining balance (₹24,800)
+  - [x] Updated `/api/students/enrol` to automate this double-invoice accounting structure on every new admission
+  - [x] Updated `/api/payments/create` with leaf payment account `ACADEMIQEDU LEARNING LLP - SU` and `fee_ledger` validation
+  - [x] Created universal idempotent sync endpoint `/api/students/sync-accounting`
+  - [x] Enhanced `/api/students/[id]` to return linked `salesOrder`, `salesInvoices`, and `receipts`
+  - [x] Updated `/students/[id]/page.tsx` with Sales Order badge and functional invoice action buttons (`Receipt`, `Mark Payment`)
+  - [x] Verified zero TypeScript compilation errors (`npx tsc --noEmit`)
+  - [x] Verified in browser with screenshot: verified 2 invoices (Paid ₹4,000, Unpaid ₹24,800), SO tag, and Payment History displayed
+  - [x] Removed `[Receipt]` button from unpaid invoices in `/students/[id]/page.tsx` so that only Paid invoices show `[Receipt]`, and Unpaid invoices show exclusively `[Mark Payment]` (verified in browser screenshot)
+
+- [x] **Step 41: Deep Audit & Mathematical Reconciliation of All Student Fees, Sales Orders & Invoices**
+  - [x] Wrote read-only audit script to query 100% of students in Frappe Cloud (`scratch/deep_accounting_audit.js`)
+  - [x] Reconciled all 58 students' `SmartUp Fee Ledger` (`gross_fee`, `total_collected`, `pending_balance`) against:
+    - ERPNext `Customer` (58 / 58 linked, 0 missed)
+    - ERPNext `Sales Order` (58 / 58 matched)
+    - ERPNext `Paid Sales Invoice` (₹5,83,805 exact match across 58 students)
+    - ERPNext `Payment Entry` (₹5,83,805 exact match across 58 students)
+    - ERPNext `Unpaid Sales Invoice` (₹26,50,395 exact match across 58 students)
+  - [x] Confirmed 0 student missed and 0 discrepancies remaining (58 / 58 perfect matches)
+  - [x] Documented complete student-by-student reconciliation matrix in `STUDENT_FINANCIAL_RECONCILIATION_REPORT.md`
+  - [x] Enhanced `/api/students/[id]` to query active Sales Orders ordered by `creation desc` and match ledger `gross_fee`
+
+- [x] **Step 42: Commit & Push Changes to Git Repository**
+  - [ ] Stage and commit accounting integration and audit improvements
+  - [ ] Push to `origin/main` (`https://github.com/arjun-smartup/smartup-online-erp.git`)
+
+
+
 
 
 

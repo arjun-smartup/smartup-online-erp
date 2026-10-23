@@ -113,6 +113,28 @@ export async function GET(
       }
     }
 
+    // 6. Fetch Linked ERPNext Sales Order if customer exists
+    let salesOrder: any = null;
+    if (student.customer) {
+      try {
+        const soRes = await fetch(
+          `${FRAPPE_URL}/api/resource/Sales%20Order?filters=[["customer","=","${encodeURIComponent(student.customer)}"],["docstatus","!=",2]]&fields=["name","transaction_date","grand_total","status","per_billed","docstatus","creation"]&order_by=creation%20desc`,
+          {
+            headers: { Authorization: AUTH_HEADER },
+            cache: "no-store",
+          }
+        );
+        if (soRes.ok) {
+          const soJson = await soRes.json();
+          const orders = soJson.data || [];
+          const targetAmount = Number(feeLedger?.gross_fee || 0);
+          salesOrder = orders.find((o: any) => Number(o.grand_total) === targetAmount) || orders[0] || null;
+        }
+      } catch (e) {
+        console.warn("Sales Order fetch note:", e);
+      }
+    }
+
     return NextResponse.json({
       student: {
         ...student,
@@ -121,6 +143,7 @@ export async function GET(
       feeLedger,
       receipts,
       salesInvoices,
+      salesOrder,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to load student" }, { status: 500 });

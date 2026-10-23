@@ -272,125 +272,179 @@ export async function POST(req: NextRequest) {
       console.warn("Sales Order creation error:", e);
     }
 
-    // B) Create & Submit Sales Invoice (Debit Debtors, Credit Tuition Fee Income)
-    let createdInvoiceId = "";
-    try {
-      const invRes = await fetch(`${FRAPPE_URL}/api/resource/Sales%20Invoice`, {
-        method: "POST",
-        headers: {
-          Authorization: AUTH_HEADER,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doctype: "Sales Invoice",
-          customer: customerName,
-          company: "SMART UP",
-          posting_date: today,
-          due_date: today,
-          currency: "INR",
-          items: [
-            {
-              item_code: "TUITION-FEE",
-              qty: 1,
-              rate: netPayable,
-            },
-          ],
-        }),
-      });
-
-      if (invRes.ok) {
-        const invData = await invRes.json();
-        createdInvoiceId = invData.data?.name;
-        // Submit Sales Invoice to post to General Ledger
-        await fetch(`${FRAPPE_URL}/api/resource/Sales%20Invoice/${encodeURIComponent(createdInvoiceId)}`, {
-          method: "PUT",
-          headers: {
-            Authorization: AUTH_HEADER,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ docstatus: 1 }),
-        });
-      }
-    } catch (e) {
-      console.warn("Sales Invoice creation error:", e);
-    }
-
-    // C) Create & Submit Payment Entry (Credit Debtors, Debit Bank/Cash, Reconcile Invoice)
+    // B) AUTOMATED INVOICES LINKED TO SALES ORDER:
+    let createdPaidInvoiceId = "";
+    let createdUnpaidInvoiceId = "";
     let createdReceiptId = "";
     let createdPaymentEntryId = "";
 
+    // 1. If advance or fee collected: Create & Submit Paid Sales Invoice + Payment Entry
     if (collect_advance && collected > 0) {
-      // 1. Create SmartUp Fee Receipt
-      if (createdLedgerId) {
-        const receiptDoc = {
-          doctype: "SmartUp Fee Receipt",
-          naming_series: "SU-REC-.YYYY.-.#####",
-          student: createdStudentId,
-          fee_ledger: createdLedgerId,
-          posting_date: today,
-          amount_received: collected,
-          currency: "INR",
-          mode_of_payment: payment_mode || "Bank Transfer",
-          transaction_reference: transaction_reference || `REC-${Date.now()}`,
-          payment_status: "Successful",
-          remarks: "Initial admission advance collection",
-        };
-
-        const receiptRes = await fetch(`${FRAPPE_URL}/api/resource/SmartUp%20Fee%20Receipt`, {
-          method: "POST",
-          headers: {
-            Authorization: AUTH_HEADER,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(receiptDoc),
-        });
-
-        if (receiptRes.ok) {
-          const rJson = await receiptRes.json();
-          createdReceiptId = rJson.data.name;
-        }
-      }
-
-      // 2. Create ERPNext Payment Entry
       try {
-        const payRes = await fetch(`${FRAPPE_URL}/api/resource/Payment%20Entry`, {
+        const invRes = await fetch(`${FRAPPE_URL}/api/resource/Sales%20Invoice`, {
           method: "POST",
           headers: {
             Authorization: AUTH_HEADER,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            doctype: "Payment Entry",
-            payment_type: "Receive",
-            party_type: "Customer",
-            party: customerName,
+            doctype: "Sales Invoice",
+            customer: customerName,
             company: "SMART UP",
             posting_date: today,
-            paid_amount: collected,
-            received_amount: collected,
-            target_exchange_rate: 1,
-            paid_to: payment_mode === "Cash" ? "Cash - SU" : "ACADEMIQEDU LEARNING LLP - SU",
-            reference_no: transaction_reference || `REC-${Date.now()}`,
-            reference_date: today,
-            references: createdInvoiceId
-              ? [
-                  {
-                    reference_doctype: "Sales Invoice",
-                    reference_name: createdInvoiceId,
-                    total_amount: netPayable,
-                    outstanding_amount: netPayable,
-                    allocated_amount: collected,
-                  },
-                ]
-              : [],
+            due_date: today,
+            currency: "INR",
+            debit_to: "Debtors - SU",
+            remarks: `Admission Advance / Collected Tuition Fee (Student: ${student_name} - ${createdStudentId})`,
+            items: [
+              {
+                item_code: "TUITION-FEE",
+                sales_order: createdSalesOrderId || undefined,
+                qty: 1,
+                rate: collected,
+                amount: collected,
+                income_account: "Sales - SU",
+                cost_center: "Main - SU",
+              },
+            ],
           }),
         });
 
-        if (payRes.ok) {
-          const payData = await payRes.json();
-          createdPaymentEntryId = payData.data?.name;
-          // Submit Payment Entry to finalize GL entry and reconcile Invoice
-          await fetch(`${FRAPPE_URL}/api/resource/Payment%20Entry/${encodeURIComponent(createdPaymentEntryId)}`, {
+        if (invRes.ok) {
+          const invData = await invRes.json();
+          createdPaidInvoiceId = invData.data?.name;
+          // Submit Paid Sales Invoice
+          await fetch(`${FRAPPE_URL}/api/resource/Sales%20Invoice/${encodeURIComponent(createdPaidInvoiceId)}`, {
+            method: "PUT",
+            headers: {
+              Authorization: AUTH_HEADER,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ docstatus: 1 }),
+          });
+
+          // Create & Submit Payment Entry to reconcile Paid Invoice
+          const payRes = await fetch(`${FRAPPE_URL}/api/resource/Payment%20Entry`, {
+            method: "POST",
+            headers: {
+              Authorization: AUTH_HEADER,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              doctype: "Payment Entry",
+              payment_type: "Receive",
+              party_type: "Customer",
+              party: customerName,
+              company: "SMART UP",
+              posting_date: today,
+              paid_amount: collected,
+              received_amount: collected,
+              target_exchange_rate: 1,
+              paid_from: "Debtors - SU",
+              paid_from_account_currency: "INR",
+              paid_to: payment_mode === "Cash" ? "Cash - SU" : "ACADEMIQEDU LEARNING LLP - SU",
+              paid_to_account_currency: "INR",
+              reference_no: transaction_reference || `REC-${Date.now()}`,
+              reference_date: today,
+              remarks: `Admission fee payment for ${createdPaidInvoiceId}`,
+              references: [
+                {
+                  reference_doctype: "Sales Invoice",
+                  reference_name: createdPaidInvoiceId,
+                  total_amount: collected,
+                  outstanding_amount: collected,
+                  allocated_amount: collected,
+                },
+              ],
+            }),
+          });
+
+          if (payRes.ok) {
+            const payData = await payRes.json();
+            createdPaymentEntryId = payData.data?.name;
+            await fetch(`${FRAPPE_URL}/api/resource/Payment%20Entry/${encodeURIComponent(createdPaymentEntryId)}`, {
+              method: "PUT",
+              headers: {
+                Authorization: AUTH_HEADER,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ docstatus: 1 }),
+            });
+          }
+
+          // Create SmartUp Fee Receipt
+          if (createdLedgerId) {
+            const receiptRes = await fetch(`${FRAPPE_URL}/api/resource/SmartUp%20Fee%20Receipt`, {
+              method: "POST",
+              headers: {
+                Authorization: AUTH_HEADER,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                doctype: "SmartUp Fee Receipt",
+                naming_series: "SU-REC-.YYYY.-.#####",
+                student: createdStudentId,
+                fee_ledger: createdLedgerId,
+                posting_date: today,
+                amount_received: collected,
+                currency: "INR",
+                mode_of_payment: payment_mode || "Bank Transfer",
+                transaction_reference: createdPaymentEntryId || transaction_reference || `REC-${Date.now()}`,
+                payment_status: "Successful",
+                remarks: `Initial admission collection against ${createdPaidInvoiceId}`,
+              }),
+            });
+            if (receiptRes.ok) {
+              const rJson = await receiptRes.json();
+              createdReceiptId = rJson.data.name;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Paid Invoice creation error:", e);
+      }
+    }
+
+    // 2. If pending balance: Create & Submit Unpaid Sales Invoice
+    if (pendingBalance > 0) {
+      try {
+        const nextMonth = new Date();
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        const unpaidDueDate = nextMonth.toISOString().split("T")[0];
+
+        const unpaidRes = await fetch(`${FRAPPE_URL}/api/resource/Sales%20Invoice`, {
+          method: "POST",
+          headers: {
+            Authorization: AUTH_HEADER,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            doctype: "Sales Invoice",
+            customer: customerName,
+            company: "SMART UP",
+            posting_date: today,
+            due_date: unpaidDueDate,
+            currency: "INR",
+            debit_to: "Debtors - SU",
+            remarks: `Remaining Tuition Fee Balance (Student: ${student_name} - ${createdStudentId})`,
+            items: [
+              {
+                item_code: "TUITION-FEE",
+                sales_order: createdSalesOrderId || undefined,
+                qty: 1,
+                rate: pendingBalance,
+                amount: pendingBalance,
+                income_account: "Sales - SU",
+                cost_center: "Main - SU",
+              },
+            ],
+          }),
+        });
+
+        if (unpaidRes.ok) {
+          const unpaidData = await unpaidRes.json();
+          createdUnpaidInvoiceId = unpaidData.data?.name;
+          await fetch(`${FRAPPE_URL}/api/resource/Sales%20Invoice/${encodeURIComponent(createdUnpaidInvoiceId)}`, {
             method: "PUT",
             headers: {
               Authorization: AUTH_HEADER,
@@ -400,19 +454,20 @@ export async function POST(req: NextRequest) {
           });
         }
       } catch (e) {
-        console.warn("Payment Entry creation error:", e);
+        console.warn("Unpaid Invoice creation error:", e);
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Student enrolled, Sales Order, Sales Invoice & Payment Entry posted to Frappe General Ledger successfully",
+      message: "Student enrolled, Sales Order, Paid & Unpaid Sales Invoices posted to General Ledger successfully",
       student_id: createdStudentId,
       student_name,
       ledger_id: createdLedgerId,
       receipt_id: createdReceiptId,
       sales_order_id: createdSalesOrderId,
-      sales_invoice_id: createdInvoiceId,
+      paid_invoice_id: createdPaidInvoiceId,
+      unpaid_invoice_id: createdUnpaidInvoiceId,
       payment_entry_id: createdPaymentEntryId,
       customer_id: customerName,
     });
