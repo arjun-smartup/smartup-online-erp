@@ -74,6 +74,7 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   });
 
   const isDirector = user?.primaryRole === "Director";
+  const isOperations = user?.primaryRole === "Operations";
 
   return (
     <aside className="w-64 border-r border-slate-200/90 bg-white/95 backdrop-blur-md flex flex-col justify-between shrink-0 h-screen sticky top-0 overflow-y-auto select-none shadow-[1px_0_4px_rgba(0,0,0,0.01)]">
@@ -210,6 +211,11 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-100/90 border border-purple-200/80 px-2 py-0.5 rounded-full shadow-2xs">
                 <ShieldCheck className="w-3 h-3 text-purple-600" />
                 Director
+              </span>
+            ) : isOperations ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-800 bg-teal-100/90 border border-teal-200/80 px-2 py-0.5 rounded-full shadow-2xs">
+                <Briefcase className="w-3 h-3 text-teal-600" />
+                Operations
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-100/90 border border-indigo-200/80 px-2 py-0.5 rounded-full shadow-2xs">

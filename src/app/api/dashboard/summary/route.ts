@@ -11,12 +11,16 @@ export async function GET(req: NextRequest) {
   try {
     // Check user session & role
     let isSalesRole = false;
+    let canViewTotalPending = true;
     const sessionCookie = req.cookies.get("smartup_session")?.value;
     if (sessionCookie) {
       try {
         const session: UserSessionData = JSON.parse(sessionCookie);
         if (session.primaryRole === "Sales User" || session.permissions?.canViewExecutiveFinancials === false) {
           isSalesRole = true;
+        }
+        if (session.permissions && session.permissions.canViewTotalPending === false) {
+          canViewTotalPending = false;
         }
       } catch {
         // Continue
@@ -200,12 +204,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       isSalesRole: false,
+      canViewTotalPending,
       totalStudents: students.length,
       totalGrossFee,
       totalDiscounts,
       totalNetPayable,
       totalCollected,
-      totalPending,
+      totalPending: canViewTotalPending ? totalPending : null,
       totalDueTillDate,
       overdueCount,
       regionCounts,

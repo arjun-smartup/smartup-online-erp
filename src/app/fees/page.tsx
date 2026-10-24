@@ -30,16 +30,18 @@ import {
   School,
   Wallet
 } from "lucide-react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 interface FeeSummary {
   totalGross: number;
   totalDiscount: number;
   totalNet: number;
   totalCollected: number;
-  totalPending: number;
+  totalPending: number | null;
   totalDueTillDate: number;
   overdueCount: number;
   studentCount: number;
+  canViewTotalPending?: boolean;
 }
 
 interface FeeLedger {
@@ -438,47 +440,47 @@ function FeesPageContent() {
       {/* TIER 1: PROGRAM-WISE FINANCIAL OVERVIEW */}
       {/* ========================================================================= */}
       {!activeProgram && (
-        <div className="space-y-7 animate-in fade-in duration-150">
+        <div className="space-y-5 animate-in fade-in duration-150">
           
           {/* Top Aggregate KPI Strip (Interactive Executive Control Bar) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${summary?.canViewTotalPending !== false ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-3`}>
             
             {/* KPI 1: Net Fees */}
             <div 
               onClick={() => setActiveMetric(activeMetric === "net_fees" ? "all" : "net_fees")}
-              className={`relative bg-white rounded-2xl p-5 space-y-2.5 transition-all duration-200 cursor-pointer group border overflow-hidden ${
+              className={`relative bg-white rounded-xl p-3.5 space-y-1.5 transition-all duration-200 cursor-pointer group border overflow-hidden ${
                 activeMetric === "net_fees" 
-                  ? "border-violet-500/60 ring-4 ring-violet-500/10 shadow-lg shadow-violet-500/5 bg-gradient-to-b from-white via-white to-violet-50/25 before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-gradient-to-r before:from-violet-500 before:to-indigo-600" 
-                  : "border-slate-200/80 hover:border-slate-300 hover:shadow-md shadow-xs"
+                  ? "border-violet-500/60 ring-2 ring-violet-500/10 shadow-sm bg-gradient-to-b from-white via-white to-violet-50/20 before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-gradient-to-r before:from-violet-500 before:to-indigo-600" 
+                  : "border-slate-200/80 hover:border-slate-300 hover:shadow-xs shadow-2xs"
               }`}
             >
               <div className="flex items-center justify-between text-slate-500">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Net Revenue</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Net Revenue</span>
                   {activeMetric === "net_fees" && (
                     <span className="w-1.5 h-1.5 rounded-full bg-violet-600 animate-pulse" />
                   )}
                 </div>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center transition-all ${
                   activeMetric === "net_fees" 
-                    ? "bg-violet-600 text-white shadow-md shadow-violet-500/20" 
+                    ? "bg-violet-600 text-white shadow-xs" 
                     : "bg-violet-50 text-violet-600 group-hover:scale-105"
                 }`}>
-                  <TrendingUp className="w-4 h-4" />
+                  <TrendingUp className="w-3.5 h-3.5" />
                 </div>
               </div>
               <div className="flex items-baseline">
-                <span className="text-lg font-semibold text-slate-400 mr-1.5">₹</span>
-                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                  {loading ? "—" : (summary?.totalNet || 0).toLocaleString()}
+                <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
+                  {loading ? "—" : <AnimatedNumber value={summary?.totalNet || 0} />}
                 </span>
               </div>
-              <div className="flex items-center justify-between pt-0.5 text-xs">
+              <div className="flex items-center justify-between pt-0.5 text-[11px]">
                 <span className="text-slate-500 font-medium flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
                   Across {summary?.studentCount || 0} active agreements
                 </span>
-                <span className={`text-[10px] font-bold ${activeMetric === "net_fees" ? "text-violet-600" : "text-slate-400 group-hover:text-slate-700"}`}>
+                <span className={`text-[9px] font-bold ${activeMetric === "net_fees" ? "text-violet-600" : "text-slate-400 group-hover:text-slate-700"}`}>
                   {activeMetric === "net_fees" ? "Active" : "Filter"}
                 </span>
               </div>
@@ -487,102 +489,104 @@ function FeesPageContent() {
             {/* KPI 2: Total Collected */}
             <div 
               onClick={() => setActiveMetric(activeMetric === "collected" ? "all" : "collected")}
-              className={`relative bg-white rounded-2xl p-5 space-y-2.5 transition-all duration-200 cursor-pointer group border overflow-hidden ${
+              className={`relative bg-white rounded-xl p-3.5 space-y-1.5 transition-all duration-200 cursor-pointer group border overflow-hidden ${
                 activeMetric === "collected" 
-                  ? "border-emerald-500/60 ring-4 ring-emerald-500/10 shadow-lg shadow-emerald-500/5 bg-gradient-to-b from-white via-white to-emerald-50/25 before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-gradient-to-r before:from-emerald-500 before:to-teal-500" 
-                  : "border-slate-200/80 hover:border-slate-300 hover:shadow-md shadow-xs"
+                  ? "border-emerald-500/60 ring-2 ring-emerald-500/10 shadow-sm bg-gradient-to-b from-white via-white to-emerald-50/20 before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-gradient-to-r before:from-emerald-500 before:to-teal-500" 
+                  : "border-slate-200/80 hover:border-slate-300 hover:shadow-xs shadow-2xs"
               }`}
             >
               <div className="flex items-center justify-between text-slate-500">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Collected</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Collected</span>
                   {activeMetric === "collected" && (
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                   )}
                 </div>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center transition-all ${
                   activeMetric === "collected" 
-                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20" 
+                    ? "bg-emerald-600 text-white shadow-xs" 
                     : "bg-emerald-50 text-emerald-600 group-hover:scale-105"
                 }`}>
-                  <CreditCard className="w-4 h-4" />
+                  <CreditCard className="w-3.5 h-3.5" />
                 </div>
               </div>
               <div className="flex items-baseline">
-                <span className="text-lg font-semibold text-emerald-600/70 mr-1.5">₹</span>
-                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 font-feature-settings-['tnum']">
-                  {loading ? "—" : (summary?.totalCollected || 0).toLocaleString()}
+                <span className="text-sm font-semibold text-emerald-600/70 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-emerald-600 font-feature-settings-['tnum']">
+                  {loading ? "—" : <AnimatedNumber value={summary?.totalCollected || 0} />}
                 </span>
               </div>
-              <div className="flex items-center justify-between pt-0.5 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-mono">
-                    {summary?.totalNet ? Math.round(((summary.totalCollected || 0) / summary.totalNet) * 100) : 0}% Realized
+              <div className="flex items-center justify-between pt-0.5 text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-mono">
+                    {summary?.totalNet ? Math.round(((summary.totalCollected || 0) / summary.totalNet) * 100) : 0}%
                   </span>
                   <span className="text-slate-400 font-medium">In GL</span>
                 </div>
-                <span className={`text-[10px] font-bold ${activeMetric === "collected" ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-700"}`}>
+                <span className={`text-[9px] font-bold ${activeMetric === "collected" ? "text-emerald-600" : "text-slate-400 group-hover:text-slate-700"}`}>
                   {activeMetric === "collected" ? "Active" : "Filter"}
                 </span>
               </div>
             </div>
 
-            {/* KPI 3: Pending Balance */}
-            <div 
-              onClick={() => setActiveMetric(activeMetric === "pending" ? "all" : "pending")}
-              className={`relative bg-white rounded-2xl p-5 space-y-2.5 transition-all duration-200 cursor-pointer group border overflow-hidden ${
-                activeMetric === "pending" 
-                  ? "border-amber-500/60 ring-4 ring-amber-500/10 shadow-lg shadow-amber-500/5 bg-gradient-to-b from-white via-white to-amber-50/25 before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-gradient-to-r before:from-amber-400 before:to-orange-500" 
-                  : "border-slate-200/80 hover:border-slate-300 hover:shadow-md shadow-xs"
-              }`}
-            >
-              <div className="flex items-center justify-between text-slate-500">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Balance</span>
-                  {activeMetric === "pending" && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
-                  )}
-                </div>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+            {/* KPI 3: Pending Balance (Visible for Director, hidden for Operations) */}
+            {summary?.canViewTotalPending !== false && (
+              <div 
+                onClick={() => setActiveMetric(activeMetric === "pending" ? "all" : "pending")}
+                className={`relative bg-white rounded-xl p-3.5 space-y-1.5 transition-all duration-200 cursor-pointer group border overflow-hidden ${
                   activeMetric === "pending" 
-                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/20" 
-                    : "bg-amber-50 text-amber-600 group-hover:scale-105"
-                }`}>
-                  <Clock className="w-4 h-4" />
+                    ? "border-amber-500/60 ring-2 ring-amber-500/10 shadow-sm bg-gradient-to-b from-white via-white to-amber-50/20 before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-gradient-to-r before:from-amber-400 before:to-orange-500" 
+                    : "border-slate-200/80 hover:border-slate-300 hover:shadow-xs shadow-2xs"
+                }`}
+              >
+                <div className="flex items-center justify-between text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Balance</span>
+                    {activeMetric === "pending" && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+                    )}
+                  </div>
+                  <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center transition-all ${
+                    activeMetric === "pending" 
+                      ? "bg-amber-500 text-white shadow-xs" 
+                      : "bg-amber-50 text-amber-600 group-hover:scale-105"
+                  }`}>
+                    <Clock className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div className="flex items-baseline">
+                  <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
+                  <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
+                    {loading ? "—" : <AnimatedNumber value={summary?.totalPending || 0} />}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-0.5 text-[11px]">
+                  <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Remaining dues
+                  </span>
+                  <span className={`text-[9px] font-bold ${activeMetric === "pending" ? "text-amber-600" : "text-slate-400 group-hover:text-slate-700"}`}>
+                    {activeMetric === "pending" ? "Active" : "Filter"}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-baseline">
-                <span className="text-lg font-semibold text-slate-400 mr-1.5">₹</span>
-                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                  {loading ? "—" : (summary?.totalPending || 0).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-0.5 text-xs">
-                <span className="text-slate-500 font-medium flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  Remaining uncollected dues
-                </span>
-                <span className={`text-[10px] font-bold ${activeMetric === "pending" ? "text-amber-600" : "text-slate-400 group-hover:text-slate-700"}`}>
-                  {activeMetric === "pending" ? "Active" : "Filter"}
-                </span>
-              </div>
-            </div>
+            )}
 
             {/* KPI 4: Due Till Date */}
-            <div className="relative bg-white border border-slate-200/80 hover:border-slate-300 rounded-2xl p-5 space-y-2.5 shadow-xs hover:shadow-md transition-all duration-200">
+            <div className="relative bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl p-3.5 space-y-1.5 shadow-2xs hover:shadow-xs transition-all duration-200">
               <div className="flex items-center justify-between text-slate-500">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Due Till Date</span>
-                <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
-                  <AlertCircle className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Due Till Date</span>
+                <div className="w-7.5 h-7.5 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
+                  <AlertCircle className="w-3.5 h-3.5" />
                 </div>
               </div>
               <div className="flex items-baseline">
-                <span className="text-lg font-semibold text-slate-400 mr-1.5">₹</span>
-                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                  {loading ? "—" : (summary?.totalDueTillDate || 0).toLocaleString()}
+                <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
+                  {loading ? "—" : <AnimatedNumber value={summary?.totalDueTillDate || 0} />}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium pt-0.5">
+              <p className="text-[11px] text-slate-500 flex items-center gap-1.5 font-medium pt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 {summary?.overdueCount || 0} overdue accounts
               </p>
@@ -593,15 +597,15 @@ function FeesPageContent() {
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-950 tracking-tight">Program Financial Breakdown</h2>
-                <p className="text-xs text-slate-500">Click a program to explore class-wise and format-wise fee ledgers</p>
+                <h2 className="text-sm font-bold text-slate-950 tracking-tight">Program Financial Breakdown</h2>
+                <p className="text-[11px] text-slate-500">Click a program to explore class-wise and format-wise fee ledgers</p>
               </div>
-              <span className="text-xs text-slate-600 font-semibold bg-white border border-slate-200/80 px-3 py-1 rounded-xl shadow-2xs">
+              <span className="text-[11px] text-slate-600 font-semibold bg-white border border-slate-200/80 px-2.5 py-0.5 rounded-lg shadow-2xs">
                 {PROGRAMS.length} Operating Programs
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {PROGRAMS.map((p) => {
                 const pLedgers = ledgers.filter((l) => isLedgerInProgram(l, p));
                 const metrics = calcMetrics(pLedgers);
@@ -610,31 +614,31 @@ function FeesPageContent() {
                 const getProgramTheme = () => {
                   if (p.accent === "violet") {
                     return {
-                      icon: <Sparkles className="w-3.5 h-3.5 text-white" />,
-                      avatarBg: "bg-gradient-to-br from-violet-600 to-indigo-600 shadow-xs shadow-violet-500/25",
+                      icon: <Sparkles className="w-3 h-3 text-white" />,
+                      avatarBg: "bg-gradient-to-br from-violet-600 to-indigo-600 shadow-2xs shadow-violet-500/25",
                       topBar: "before:bg-gradient-to-r before:from-violet-500 before:via-indigo-500 before:to-purple-600",
                       hoverBorder: "hover:border-violet-300",
                     };
                   }
                   if (p.accent === "teal") {
                     return {
-                      icon: <Globe2 className="w-3.5 h-3.5 text-white" />,
-                      avatarBg: "bg-gradient-to-br from-teal-500 to-emerald-600 shadow-xs shadow-teal-500/25",
+                      icon: <Globe2 className="w-3 h-3 text-white" />,
+                      avatarBg: "bg-gradient-to-br from-teal-500 to-emerald-600 shadow-2xs shadow-teal-500/25",
                       topBar: "before:bg-gradient-to-r before:from-teal-500 before:via-emerald-500 before:to-cyan-600",
                       hoverBorder: "hover:border-teal-300",
                     };
                   }
                   if (p.accent === "amber") {
                     return {
-                      icon: <BookOpen className="w-3.5 h-3.5 text-white" />,
-                      avatarBg: "bg-gradient-to-br from-amber-500 to-orange-500 shadow-xs shadow-amber-500/25",
+                      icon: <BookOpen className="w-3 h-3 text-white" />,
+                      avatarBg: "bg-gradient-to-br from-amber-500 to-orange-500 shadow-2xs shadow-amber-500/25",
                       topBar: "before:bg-gradient-to-r before:from-amber-400 before:via-orange-500 before:to-amber-600",
                       hoverBorder: "hover:border-amber-300",
                     };
                   }
                   return {
-                    icon: <School className="w-3.5 h-3.5 text-white" />,
-                    avatarBg: "bg-gradient-to-br from-sky-500 to-blue-600 shadow-xs shadow-sky-500/25",
+                    icon: <School className="w-3 h-3 text-white" />,
+                    avatarBg: "bg-gradient-to-br from-sky-500 to-blue-600 shadow-2xs shadow-sky-500/25",
                     topBar: "before:bg-gradient-to-r before:from-sky-400 before:via-blue-500 before:to-indigo-600",
                     hoverBorder: "hover:border-sky-300",
                   };
@@ -650,35 +654,27 @@ function FeesPageContent() {
                       setSelectedClass(null);
                       setSelectedFormat(null);
                     }}
-                    className={`relative bg-white border border-slate-200/80 ${theme.hoverBorder} rounded-2xl p-4 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 cursor-pointer group flex flex-col justify-between space-y-3 overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 ${theme.topBar}`}
+                    className={`relative bg-white border border-slate-200/80 ${theme.hoverBorder} rounded-xl p-3 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-200 cursor-pointer group flex flex-col justify-between space-y-2 overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 ${theme.topBar}`}
                   >
                     {/* Header: Program Avatar, Title, Enrolled Badge */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white shrink-0 ${theme.avatarBg}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${theme.avatarBg}`}>
                           {theme.icon}
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-slate-900 group-hover:text-slate-950 tracking-tight truncate">
-                            {p.title}
-                          </h3>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200/60 shrink-0">
-                              {p.code}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium truncate">{p.subtitle}</span>
-                          </div>
-                        </div>
+                        <h3 className="font-bold text-xs sm:text-[13px] text-slate-900 group-hover:text-slate-950 tracking-tight truncate">
+                          {p.title}
+                        </h3>
                       </div>
 
-                      <div className="shrink-0 pt-0.5">
+                      <div className="shrink-0">
                         {metrics.count > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-800 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             {metrics.count} St.
                           </span>
                         ) : (
-                          <span className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-50 text-slate-400 border border-slate-200/50">
+                          <span className="inline-flex items-center text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-slate-50 text-slate-400 border border-slate-200/50">
                             0
                           </span>
                         )}
@@ -686,27 +682,20 @@ function FeesPageContent() {
                     </div>
 
                     {/* Financial Amount: Clean Bold Typography */}
-                    <div className="flex items-baseline justify-between pt-0.5">
-                      <div className="flex items-baseline">
-                        <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
-                        <span className="text-xl sm:text-2xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
-                          {metrics.net.toLocaleString()}
-                        </span>
-                      </div>
-                      {metrics.count > 0 && (
-                        <span className="text-[10px] font-medium text-slate-400 font-mono">
-                          ~₹{Math.round(metrics.net / metrics.count).toLocaleString()}/st
-                        </span>
-                      )}
+                    <div className="flex items-baseline pt-0">
+                      <span className="text-xs font-semibold text-slate-400 mr-1">₹</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
+                        <AnimatedNumber value={metrics.net} />
+                      </span>
                     </div>
 
                     {/* Two-Pillar Split: Collected vs Pending */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5">
                       {/* Collected Pillar */}
-                      <div className="bg-emerald-50/70 hover:bg-emerald-50/90 border border-emerald-100/90 rounded-xl p-2 space-y-0.5 transition-colors">
-                        <div className="flex items-center justify-between text-[9px]">
+                      <div className="bg-emerald-50/70 hover:bg-emerald-50/90 border border-emerald-100/90 rounded-lg p-1.5 space-y-0.5 transition-colors">
+                        <div className="flex items-center justify-between text-[8.5px]">
                           <span className="font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="w-1 h-1 rounded-full bg-emerald-500" />
                             Collected
                           </span>
                           <span className="font-extrabold text-emerald-800 font-mono">
@@ -714,18 +703,18 @@ function FeesPageContent() {
                           </span>
                         </div>
                         <div className="flex items-baseline">
-                          <span className="text-[11px] font-semibold text-emerald-600/70 mr-0.5">₹</span>
-                          <span className="text-sm font-extrabold text-emerald-950 tracking-tight font-feature-settings-['tnum'] truncate">
-                            {metrics.collected.toLocaleString()}
+                          <span className="text-[10px] font-semibold text-emerald-600/70 mr-0.5">₹</span>
+                          <span className="text-xs sm:text-[13px] font-bold text-emerald-950 tracking-tight font-feature-settings-['tnum'] truncate">
+                            <AnimatedNumber value={metrics.collected} />
                           </span>
                         </div>
                       </div>
 
                       {/* Pending Pillar */}
-                      <div className="bg-slate-50/90 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl p-2 space-y-0.5 transition-colors">
-                        <div className="flex items-center justify-between text-[9px]">
+                      <div className="bg-slate-50/90 hover:bg-slate-100/80 border border-slate-200/80 rounded-lg p-1.5 space-y-0.5 transition-colors">
+                        <div className="flex items-center justify-between text-[8.5px]">
                           <span className="font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            <span className="w-1 h-1 rounded-full bg-amber-400" />
                             Pending
                           </span>
                           <span className="font-extrabold text-slate-700 font-mono">
@@ -733,48 +722,25 @@ function FeesPageContent() {
                           </span>
                         </div>
                         <div className="flex items-baseline">
-                          <span className="text-[11px] font-semibold text-slate-400 mr-0.5">₹</span>
-                          <span className="text-sm font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum'] truncate">
-                            {metrics.pending.toLocaleString()}
+                          <span className="text-[10px] font-semibold text-slate-400 mr-0.5">₹</span>
+                          <span className="text-xs sm:text-[13px] font-bold text-slate-950 tracking-tight font-feature-settings-['tnum'] truncate">
+                            <AnimatedNumber value={metrics.pending} />
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Progress Bar & Realization Gauge */}
-                    <div className="space-y-1">
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                    <div className="space-y-0.5">
+                      <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden flex">
                         <div 
-                          className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500 shadow-xs shadow-emerald-500/20"
+                          className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500 shadow-2xs shadow-emerald-500/20"
                           style={{ width: `${Math.min(100, metrics.collectionRate)}%` }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-[9px] text-slate-400 font-medium">
-                        <span className="text-emerald-700 font-semibold">{metrics.collectionRate}% Realization</span>
-                        <span className="truncate">₹ {metrics.pending.toLocaleString()} remaining</span>
-                      </div>
-                    </div>
-
-                    {/* Card Footer: Delivery Chips & Link */}
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1 font-mono text-[9px]">
-                        {metrics.count > 0 ? (
-                          <>
-                            <span className="px-1.5 py-0.2 rounded font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
-                              1:1: {pLedgers.filter(l => l.delivery_mode?.includes("1:1")).length}
-                            </span>
-                            <span className="px-1.5 py-0.2 rounded font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
-                              1:3: {pLedgers.filter(l => l.delivery_mode?.includes("1:3")).length}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-slate-400 italic text-[9px]">No batches</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1 text-slate-600 group-hover:text-slate-950 font-semibold text-[11px] transition-colors">
-                        <span>Explore</span>
-                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      <div className="flex items-center justify-between text-[8.5px] text-slate-400 font-medium">
+                        <span className="text-emerald-700 font-semibold">{metrics.collectionRate}% Realized</span>
+                        <span className="truncate">₹ <AnimatedNumber value={metrics.pending} /> rem.</span>
                       </div>
                     </div>
                   </div>
@@ -818,48 +784,48 @@ function FeesPageContent() {
           </div>
 
           {/* 3 Executive Summary Cards for this Program */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-2 shadow-xs">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Program Net Fees</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Program Net Fees</span>
               <div className="flex items-baseline">
-                <span className="text-lg font-semibold text-slate-400 mr-1.5">₹</span>
-                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                  {activeProgramMetrics.net.toLocaleString()}
+                <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
+                  <AnimatedNumber value={activeProgramMetrics.net} />
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Total contractual commitment</p>
+              <p className="text-[11px] text-slate-400">Total contractual commitment</p>
             </div>
 
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-2 shadow-xs">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Deposited</span>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Deposited</span>
               <div className="flex items-baseline">
-                <span className="text-lg font-semibold text-emerald-600/70 mr-1.5">₹</span>
-                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-emerald-600 font-feature-settings-['tnum']">
-                  {activeProgramMetrics.collected.toLocaleString()}
+                <span className="text-sm font-semibold text-emerald-600/70 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-emerald-600 font-feature-settings-['tnum']">
+                  <AnimatedNumber value={activeProgramMetrics.collected} />
                 </span>
               </div>
-              <p className="text-xs text-emerald-700 font-semibold">{activeProgramMetrics.collectionRate}% realization rate</p>
+              <p className="text-[11px] text-emerald-700 font-semibold">{activeProgramMetrics.collectionRate}% realization rate</p>
             </div>
 
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-2 shadow-xs">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Outstanding Pending</span>
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Outstanding Pending</span>
               <div className="flex items-baseline">
-                <span className="text-lg font-semibold text-slate-400 mr-1.5">₹</span>
-                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                  {activeProgramMetrics.pending.toLocaleString()}
+                <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
+                  <AnimatedNumber value={activeProgramMetrics.pending} />
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Due across {activeProgramMetrics.count} active ledgers</p>
+              <p className="text-[11px] text-slate-400">Due across {activeProgramMetrics.count} active ledgers</p>
             </div>
           </div>
 
           {/* Class Cards Grid — Elevated Design */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Select Class Level
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {CLASS_LEVELS.map((cls) => {
                 const cLedgers = programLedgers.filter((l) => l.class_level?.includes(cls));
                 const metrics = calcMetrics(cLedgers);
@@ -871,65 +837,65 @@ function FeesPageContent() {
                       setSelectedClass(cls);
                       setSelectedFormat(null);
                     }}
-                    className="relative bg-white border border-slate-200/80 hover:border-violet-300 rounded-3xl p-5 space-y-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-violet-500/5 hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+                    className="relative bg-white border border-slate-200/80 hover:border-violet-300 rounded-xl p-3.5 space-y-2.5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="w-11 h-11 rounded-2xl font-bold font-mono text-sm bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-violet-500/20 shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-8 h-8 rounded-lg font-bold font-mono text-xs bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
                           {cls}
                         </span>
-                        <div>
-                          <h4 className="text-base font-bold text-slate-900 group-hover:text-slate-950 transition-colors">
+                        <div className="min-w-0">
+                          <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 group-hover:text-slate-950 transition-colors truncate">
                             Class {cls}
                           </h4>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-[10px] text-slate-400 truncate">
                             {metrics.count} active student{metrics.count === 1 ? "" : "s"}
                           </p>
                         </div>
                       </div>
 
-                      <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs">
-                        <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      <div className="w-6.5 h-6.5 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </div>
 
                     {/* Net Fees Hero Amount */}
                     <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
                         Total Net Fees
                       </span>
                       <div className="flex items-baseline">
-                        <span className="text-base font-semibold text-slate-400 mr-1">₹</span>
-                        <span className="text-2xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
-                          {metrics.net.toLocaleString()}
+                        <span className="text-xs font-semibold text-slate-400 mr-1">₹</span>
+                        <span className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
+                          <AnimatedNumber value={metrics.net} />
                         </span>
                       </div>
                     </div>
 
                     {/* Two-Column Split (Collected vs Pending) */}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-emerald-50/70 border border-emerald-100/80 rounded-xl p-2.5 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
-                          <span className="text-[10px] font-bold text-emerald-700 font-mono">{metrics.collectionRate}%</span>
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="bg-emerald-50/70 border border-emerald-100/80 rounded-lg p-1.5 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
+                          <span className="font-bold text-emerald-700 font-mono">{metrics.collectionRate}%</span>
                         </div>
-                        <div className="text-sm font-extrabold text-emerald-900 font-feature-settings-['tnum']">
-                          ₹ {metrics.collected.toLocaleString()}
+                        <div className="text-xs sm:text-[13px] font-bold text-emerald-950 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={metrics.collected} />
                         </div>
                       </div>
-                      <div className="bg-slate-50/90 border border-slate-200/70 rounded-xl p-2.5 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Pending</span>
-                          <span className="text-[10px] font-bold text-slate-500 font-mono">{metrics.count > 0 ? 100 - metrics.collectionRate : 0}%</span>
+                      <div className="bg-slate-50/90 border border-slate-200/70 rounded-lg p-1.5 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-slate-600 uppercase tracking-wider">Pending</span>
+                          <span className="font-bold text-slate-500 font-mono">{metrics.count > 0 ? 100 - metrics.collectionRate : 0}%</span>
                         </div>
-                        <div className="text-sm font-extrabold text-slate-900 font-feature-settings-['tnum']">
-                          ₹ {metrics.pending.toLocaleString()}
+                        <div className="text-xs sm:text-[13px] font-bold text-slate-950 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={metrics.pending} />
                         </div>
                       </div>
                     </div>
 
                     {/* Mini Progress Track */}
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div 
                         className="bg-emerald-500 h-full rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(100, metrics.collectionRate)}%` }}
@@ -937,19 +903,19 @@ function FeesPageContent() {
                     </div>
 
                     {/* Formats & Action */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1 font-mono text-[10px]">
-                        <span className="px-2 py-0.5 rounded-md font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <div className="flex items-center gap-1 font-mono text-[9px]">
+                        <span className="px-1.5 py-0.2 rounded font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
                           1:1: {cLedgers.filter(l => l.delivery_mode?.includes("1:1")).length}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
+                        <span className="px-1.5 py-0.2 rounded font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
                           1:3: {cLedgers.filter(l => l.delivery_mode?.includes("1:3")).length}
                         </span>
                       </div>
 
-                      <span className="text-slate-600 group-hover:text-slate-950 font-semibold flex items-center gap-1 transition-colors">
-                        View Formats
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      <span className="text-slate-600 group-hover:text-slate-950 font-semibold flex items-center gap-0.5 transition-colors">
+                        Formats
+                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
                   </div>
@@ -1005,19 +971,19 @@ function FeesPageContent() {
               const getFormatAvatar = () => {
                 if (fmt.id.includes("1:1")) {
                   return {
-                    icon: <User className="w-5 h-5 text-white" />,
-                    bg: "bg-gradient-to-br from-violet-600 to-purple-600 shadow-md shadow-violet-500/20"
+                    icon: <User className="w-4 h-4 text-white" />,
+                    bg: "bg-gradient-to-br from-violet-600 to-purple-600 shadow-xs shadow-violet-500/20"
                   };
                 }
                 if (fmt.id.includes("1:3")) {
                   return {
-                    icon: <Users className="w-5 h-5 text-white" />,
-                    bg: "bg-gradient-to-br from-indigo-600 to-sky-600 shadow-md shadow-indigo-500/20"
+                    icon: <Users className="w-4 h-4 text-white" />,
+                    bg: "bg-gradient-to-br from-indigo-600 to-sky-600 shadow-xs shadow-indigo-500/20"
                   };
                 }
                 return {
-                  icon: <School className="w-5 h-5 text-white" />,
-                  bg: "bg-gradient-to-br from-emerald-600 to-teal-600 shadow-md shadow-emerald-500/20"
+                  icon: <School className="w-4 h-4 text-white" />,
+                  bg: "bg-gradient-to-br from-emerald-600 to-teal-600 shadow-xs shadow-emerald-500/20"
                 };
               };
 
@@ -1027,82 +993,82 @@ function FeesPageContent() {
                 <div
                   key={fmt.id}
                   onClick={() => setSelectedFormat(fmt.id)}
-                  className="relative bg-white border border-slate-200/80 hover:border-slate-300 rounded-3xl p-6 space-y-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+                  className="relative bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl p-3.5 space-y-2.5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${avatar.bg}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${avatar.bg}`}>
                         {avatar.icon}
                       </div>
-                      <div>
-                        <h3 className="font-bold text-base text-slate-900 group-hover:text-slate-950 transition-colors">
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-xs sm:text-[13px] text-slate-900 group-hover:text-slate-950 transition-colors truncate">
                           {fmt.label}
                         </h3>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200/60">
                           {fmt.id}
                         </span>
                       </div>
                     </div>
 
-                    <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs">
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    <div className="w-6.5 h-6.5 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] text-slate-500 line-clamp-1">
                     {fmt.desc}
                   </p>
 
                   {/* Net Fees Hero Amount */}
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
                       Total Net Fees
                     </span>
                     <div className="flex items-baseline">
-                      <span className="text-base font-semibold text-slate-400 mr-1">₹</span>
-                      <span className="text-2xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
-                        {metrics.net.toLocaleString()}
+                      <span className="text-xs font-semibold text-slate-400 mr-1">₹</span>
+                      <span className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
+                        <AnimatedNumber value={metrics.net} />
                       </span>
                     </div>
                   </div>
 
                   {/* Two-Column Split (Collected vs Pending) */}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-emerald-50/70 border border-emerald-100/90 rounded-xl p-2.5 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
-                        <span className="text-[10px] font-bold text-emerald-700 font-mono">{metrics.collectionRate}%</span>
+                  <div className="grid grid-cols-2 gap-1.5 text-xs">
+                    <div className="bg-emerald-50/70 border border-emerald-100/90 rounded-lg p-1.5 space-y-0.5">
+                      <div className="flex items-center justify-between text-[8.5px]">
+                        <span className="font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
+                        <span className="font-bold text-emerald-700 font-mono">{metrics.collectionRate}%</span>
                       </div>
-                      <div className="text-sm font-extrabold text-emerald-900 font-feature-settings-['tnum']">
-                        ₹ {metrics.collected.toLocaleString()}
+                      <div className="text-xs sm:text-[13px] font-bold text-emerald-950 font-feature-settings-['tnum'] truncate">
+                        ₹ <AnimatedNumber value={metrics.collected} />
                       </div>
                     </div>
-                    <div className="bg-slate-50/90 border border-slate-200/70 rounded-xl p-2.5 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">Pending</span>
-                        <span className="text-[10px] font-bold text-slate-500 font-mono">{metrics.count > 0 ? 100 - metrics.collectionRate : 0}%</span>
+                    <div className="bg-slate-50/90 border border-slate-200/70 rounded-lg p-1.5 space-y-0.5">
+                      <div className="flex items-center justify-between text-[8.5px]">
+                        <span className="font-bold text-slate-600 uppercase tracking-wider">Pending</span>
+                        <span className="font-bold text-slate-500 font-mono">{metrics.count > 0 ? 100 - metrics.collectionRate : 0}%</span>
                       </div>
-                      <div className="text-sm font-extrabold text-slate-900 font-feature-settings-['tnum']">
-                        ₹ {metrics.pending.toLocaleString()}
+                      <div className="text-xs sm:text-[13px] font-bold text-slate-900 font-feature-settings-['tnum'] truncate">
+                        ₹ <AnimatedNumber value={metrics.pending} />
                       </div>
                     </div>
                   </div>
 
                   {/* Mini Progress Track */}
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-500 h-full rounded-full transition-all duration-300"
                       style={{ width: `${Math.min(100, metrics.collectionRate)}%` }}
                     />
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 font-mono">
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60 font-mono">
                       {metrics.count} student{metrics.count === 1 ? "" : "s"}
                     </span>
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-slate-950 flex items-center gap-1 transition-colors">
+                    <span className="text-[10px] font-bold text-slate-700 group-hover:text-slate-950 flex items-center gap-0.5 transition-colors">
                       Open Roster
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
                 </div>

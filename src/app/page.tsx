@@ -22,6 +22,7 @@ import {
   Layers,
   ChevronRight
 } from "lucide-react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 interface ProgramFinancial {
   id: string;
@@ -50,12 +51,13 @@ interface RecentStudent {
 
 interface DashboardData {
   isSalesRole?: boolean;
+  canViewTotalPending?: boolean;
   totalStudents: number;
   totalGrossFee?: number;
   totalDiscounts?: number;
   totalNetPayable?: number;
   totalCollected?: number;
-  totalPending?: number;
+  totalPending?: number | null;
   totalDueTillDate?: number;
   overdueCount?: number;
   classCounts?: Record<string, number>;
@@ -154,7 +156,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                {loading ? "—" : data?.totalStudents || 0}
+                {loading ? "—" : <AnimatedNumber value={data?.totalStudents || 0} />}
               </div>
             </Link>
 
@@ -169,7 +171,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-teal-700 font-feature-settings-['tnum']">
-                {loading ? "—" : (data?.programs?.find((p) => p.id === "CBSE GCC Online")?.studentCount || 38)}
+                {loading ? "—" : <AnimatedNumber value={data?.programs?.find((p) => p.id === "CBSE GCC Online")?.studentCount || 38} />}
               </div>
             </div>
 
@@ -184,7 +186,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-indigo-700 font-feature-settings-['tnum']">
-                {loading ? "—" : (data?.programs?.find((p) => p.id === "CBSE Kerala")?.studentCount || 20)}
+                {loading ? "—" : <AnimatedNumber value={data?.programs?.find((p) => p.id === "CBSE Kerala")?.studentCount || 20} />}
               </div>
             </div>
 
@@ -372,7 +374,7 @@ export default function DashboardPage() {
         /* ======================================================== */
         <div className="space-y-8 animate-in fade-in duration-300">
           {/* KPI Summary Cards with 3D Depth */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${data?.canViewTotalPending !== false ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-3.5`}>
             {/* Card 1: Students */}
             <Link
               id="kpi-total-students"
@@ -392,7 +394,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                  {loading ? "—" : data?.totalStudents || 0}
+                  {loading ? "—" : <AnimatedNumber value={data?.totalStudents || 0} />}
                 </div>
               </div>
             </Link>
@@ -415,7 +417,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
-                  {loading ? "—" : `₹ ${(data?.totalNetPayable || 0).toLocaleString()}`}
+                  {loading ? "—" : <>₹ <AnimatedNumber value={data?.totalNetPayable || 0} /></>}
                 </div>
               </div>
             </Link>
@@ -438,33 +440,35 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-emerald-600 font-feature-settings-['tnum']">
-                  {loading ? "—" : `₹ ${(data?.totalCollected || 0).toLocaleString()}`}
+                  {loading ? "—" : <>₹ <AnimatedNumber value={data?.totalCollected || 0} /></>}
                 </div>
               </div>
             </Link>
 
-            {/* Card 4: Pending / Dues */}
-            <Link
-              href="/fees?metric=pending"
-              className="group bg-white border border-slate-200/90 rounded-2xl p-4 cursor-pointer space-y-2 block shadow-[0_4px_20px_-4px_rgba(15,23,42,0.07),0_2px_4px_-1px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] hover:-translate-y-1 hover:shadow-[0_20px_35px_-8px_rgba(15,23,42,0.12),0_8px_16px_-4px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] hover:border-amber-300 transition-all duration-300 ease-out"
-            >
-              <div className="flex items-center justify-between text-slate-500">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-amber-600 transition-colors">
-                  Pending Balance
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30 border-t border-white/40 ring-1 ring-amber-500/20">
-                    <Clock className="w-3.5 h-3.5 text-white" />
+            {/* Card 4: Pending / Dues (Visible for Director, hidden for Operations) */}
+            {data?.canViewTotalPending !== false && (
+              <Link
+                href="/fees?metric=pending"
+                className="group bg-white border border-slate-200/90 rounded-2xl p-4 cursor-pointer space-y-2 block shadow-[0_4px_20px_-4px_rgba(15,23,42,0.07),0_2px_4px_-1px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,1)] hover:-translate-y-1 hover:shadow-[0_20px_35px_-8px_rgba(15,23,42,0.12),0_8px_16px_-4px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] hover:border-amber-300 transition-all duration-300 ease-out"
+              >
+                <div className="flex items-center justify-between text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-amber-600 transition-colors">
+                    Pending Balance
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-500/30 border-t border-white/40 ring-1 ring-amber-500/20">
+                      <Clock className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                   </div>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                 </div>
-              </div>
-              <div>
-                <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-600 font-feature-settings-['tnum']">
-                  {loading ? "—" : `₹ ${(data?.totalPending || 0).toLocaleString()}`}
+                <div>
+                  <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-amber-600 font-feature-settings-['tnum']">
+                    {loading ? "—" : <>₹ <AnimatedNumber value={data?.totalPending || 0} /></>}
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+            )}
           </div>
 
           {/* Academic Program Financial Breakdown */}

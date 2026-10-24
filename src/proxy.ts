@@ -58,13 +58,13 @@ export function proxy(request: NextRequest) {
       const canViewFees = userSession.permissions?.canViewFees ?? !isSalesUser;
       const canViewSettings = userSession.permissions?.canViewSystemStatus ?? !isSalesUser;
 
-      // Fees & Collections: Protected for Director only
+      // Fees & Collections: Protected for Director and Operations roles
       if (!canViewFees && (pathname === "/fees" || pathname.startsWith("/fees/"))) {
         const redirectUrl = new URL("/students?access=restricted_fees", request.url);
         return NextResponse.redirect(redirectUrl);
       }
 
-      // Frappe System & Cloud Settings: Protected for Director only
+      // Frappe System & Cloud Settings: Protected for Director and Operations roles
       if (!canViewSettings && (pathname === "/settings" || pathname.startsWith("/settings/"))) {
         const redirectUrl = new URL("/students?access=restricted_settings", request.url);
         return NextResponse.redirect(redirectUrl);

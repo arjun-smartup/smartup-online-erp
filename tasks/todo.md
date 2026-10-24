@@ -320,8 +320,6 @@
     - ERPNext `Unpaid Sales Invoice` (₹26,50,395 exact match across 58 students)
   - [x] Confirmed 0 student missed and 0 discrepancies remaining (58 / 58 perfect matches)
   - [x] Documented complete student-by-student reconciliation matrix in `STUDENT_FINANCIAL_RECONCILIATION_REPORT.md`
-  - [x] Enhanced `/api/students/[id]` to query active Sales Orders ordered by `creation desc` and match ledger `gross_fee`
-
 - [x] **Step 43: Role-Based Access Control Architecture (Director & Sales User)**
   - [x] Deep study of Frappe backend roles (`Sales User` verified existing, `Director` role creation required)
   - [x] Define RBAC permission matrix for Director vs Sales User (Routes, APIs, Actions)
@@ -333,6 +331,54 @@
   - [x] Secure sensitive API routes (`/api/fees/*`, `/api/payments/*`) with server-side role verification
   - [x] Strict Role Verification: Block any user without authorized Director or Sales User role with 403 and amber 'Access Restricted: No role assigned' warning banner
   - [x] Test and verify all role flows end-to-end via automated browser testing (screenshots & video recorded)
+
+- [x] **Step 44: Smooth Animated Number Count-Up for Financial and KPI Metrics**
+  - [x] Build reusable, 60fps zero-dependency `AnimatedNumber` component (`src/components/ui/animated-number.tsx`) with customizable duration, easing (easeOutQuart/easeOutExpo), and number formatting
+  - [x] Integrate count-up animation into `/fees` top KPI cards (Total Net Revenue, Total Collected, Pending Balance, Due Till Date)
+  - [x] Integrate count-up animation into `/fees` Program Financial Breakdown cards (Net Revenue, Collected, Pending, Realization metrics)
+  - [x] Integrate count-up animation into Tier 2 (Class breakdown) and Tier 3 (Delivery format breakdown) cards
+  - [x] Integrate count-up animation into Executive Dashboard (`/`) KPI cards
+  - [x] Verify build and typecheck with `npx tsc --noEmit` (0 errors)
+  - [x] Verify live visual count-up animation in browser subagent and document results
+
+- [x] **Step 45: Streamline Program Cards & Remove Clutter**
+  - [x] Remove program code tags (`SU KL`, `SU ST`, `SU GCC-ON`, `SU GCC-OFF`) and subtitle descriptions from program cards in `/fees`
+  - [x] Remove per-student average estimate (`~₹46,095/st`) beside the net fee amount
+  - [x] Remove delivery batch chip tags (`1:1: 7`, `1:3: 13`, `No batches`) and `Explore →` link from card footers
+  - [x] Maintain full card clickability, responsive layout, and clean minimalist card aesthetic
+  - [x] Verify with TypeScript typecheck (`npx tsc --noEmit`) and browser visual verification
+
+- [x] **Step 46: Compact Card Sizing & Balanced Proportion Optimization**
+  - [x] Reduce Program Financial Breakdown cards padding from `p-4` to `p-3`, spacing from `space-y-3` to `space-y-2`, typography from `text-2xl` to `text-xl`
+  - [x] Compact the Collected/Pending two-pillar split boxes (`p-1.5`, `rounded-lg`) and progress gauge (`h-1`)
+  - [x] Tighten top KPI cards from `p-5 space-y-2.5` to `p-3.5 space-y-1.5` and typography to `text-xl sm:text-2xl`
+  - [x] Reduce grid gap and section spacing for a sleek, cohesive executive density
+  - [x] Verify with `npx tsc --noEmit` and browser visual inspection
+
+- [x] **Step 47: Reduce Classes Breakdown Card Sizing in Tier 2**
+  - [x] Re-engineer Tier 2 Class cards from `rounded-3xl p-5 space-y-5` to sleek `rounded-xl p-3.5 space-y-2.5`
+  - [x] Compact Class Avatar from `w-11 h-11 rounded-2xl` to `w-8 h-8 rounded-xl` and scale typography
+  - [x] Compact Net Amount (`text-lg sm:text-xl`) and Collected/Pending metric boxes (`p-1.5 rounded-lg`)
+  - [x] Tighten Tier 2 Program KPI header cards (`p-3.5 space-y-1`)
+  - [x] Verify in browser that all classes fit comfortably without vertical scrolling/cutoff
+
+- [x] **Step 48: Implement Operations Role with Selective Pending Fees Visibility**
+  - [x] Update `src/lib/types/auth.ts`: Add `Operations` to `PrimaryRole`/`UserRole`, add `canViewTotalPending` to `UserPermissions`, configure role resolution
+  - [x] Update `src/proxy.ts`: Permit `Operations` role to access `/fees` and financial routes
+  - [x] Update `src/app/api/fees/summary/route.ts` & `src/app/api/dashboard/summary/route.ts`: Allow `Operations` role, protect total pending balance for Operations
+  - [x] Update `src/components/layout/app-shell.tsx` & `src/components/layout/app-sidebar.tsx`: Add Operations badge & avatar styles
+  - [x] Update `src/app/page.tsx`: Hide company-wide Pending Balance top KPI card for Operations, keep program-level pending fees intact
+  - [x] Update `src/app/fees/page.tsx`: Hide Tier 1 company-wide Pending Balance top KPI card for Operations, keep all program, class, and format pending fees visible
+  - [x] Verify type checking (`npx tsc --noEmit`) and verify visual behavior in browser
+
+
+
+
+
+
+
+
+
 
 
 

@@ -8,16 +8,20 @@ const AUTH_HEADER = `token ${API_KEY}:${API_SECRET}`;
 
 export async function GET(req: NextRequest) {
   try {
-    // Role check: Enforce Director access
+    // Role check: Enforce Director and Operations access
+    let canViewTotalPending = true;
     const sessionCookie = req.cookies.get("smartup_session")?.value;
     if (sessionCookie) {
       try {
         const session = JSON.parse(sessionCookie);
         if (session.primaryRole === "Sales User" || session.permissions?.canViewFees === false) {
           return NextResponse.json(
-            { error: "Forbidden", message: "Fees & Collections data is restricted to Director role." },
+            { error: "Forbidden", message: "Fees & Collections data is restricted to authorized roles." },
             { status: 403 }
           );
+        }
+        if (session.permissions && session.permissions.canViewTotalPending === false) {
+          canViewTotalPending = false;
         }
       } catch {
         // Continue
@@ -116,10 +120,11 @@ export async function GET(req: NextRequest) {
         totalDiscount,
         totalNet,
         totalCollected,
-        totalPending,
+        totalPending: canViewTotalPending ? totalPending : null,
         totalDueTillDate,
         overdueCount,
         studentCount: enrichedLedgers.length,
+        canViewTotalPending,
       },
       ledgers: enrichedLedgers,
       recentReceipts: enrichedReceipts,

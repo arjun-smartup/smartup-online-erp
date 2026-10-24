@@ -8,6 +8,7 @@ import {
   Search, 
   UserCheck,
   ShieldCheck,
+  Briefcase,
   AlertTriangle,
   X
 } from "lucide-react";
@@ -83,6 +84,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   const isDirector = authUser?.primaryRole === "Director";
+  const isOperations = authUser?.primaryRole === "Operations";
   const userInitials = authUser?.fullName
     ? authUser.fullName.charAt(0).toUpperCase()
     : (authUser?.email ? authUser.email.charAt(0).toUpperCase() : "U");
@@ -119,6 +121,8 @@ export function AppShell({ children }: AppShellProps) {
                 className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-md border-t ${
                   isDirector 
                     ? "bg-gradient-to-b from-purple-500 via-purple-600 to-indigo-700 shadow-purple-500/25 border-purple-300/40" 
+                    : isOperations
+                    ? "bg-gradient-to-b from-teal-500 via-emerald-600 to-teal-700 shadow-teal-500/25 border-teal-300/40"
                     : "bg-gradient-to-b from-blue-500 via-indigo-600 to-indigo-700 shadow-indigo-500/25 border-indigo-300/40"
                 }`}
               >
@@ -132,6 +136,11 @@ export function AppShell({ children }: AppShellProps) {
                   <div className="flex items-center gap-1 text-[10px] text-purple-700 font-bold bg-purple-50 border border-purple-200/80 px-1.5 py-0.2 rounded-md mt-0.5 shadow-2xs">
                     <ShieldCheck className="w-3 h-3 text-purple-600" />
                     <span>Director</span>
+                  </div>
+                ) : isOperations ? (
+                  <div className="flex items-center gap-1 text-[10px] text-teal-800 font-bold bg-teal-50 border border-teal-200/80 px-1.5 py-0.2 rounded-md mt-0.5 shadow-2xs">
+                    <Briefcase className="w-3 h-3 text-teal-600" />
+                    <span>Operations</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 text-[10px] text-indigo-700 font-bold bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 rounded-md mt-0.5 shadow-2xs">

@@ -1,5 +1,5 @@
-export type UserRole = "Director" | "Sales User" | "System Manager" | "Administrator";
-export type PrimaryRole = "Director" | "Sales User";
+export type UserRole = "Director" | "Operations" | "Sales User" | "System Manager" | "Administrator";
+export type PrimaryRole = "Director" | "Operations" | "Sales User";
 
 export interface UserPermissions {
   canViewFees: boolean;
@@ -8,6 +8,7 @@ export interface UserPermissions {
   canEditStudents: boolean;
   canViewSystemStatus: boolean;
   canViewExecutiveFinancials: boolean;
+  canViewTotalPending: boolean;
 }
 
 export interface AuthUser {
@@ -32,7 +33,7 @@ export interface RoleResolutionResult {
 
 /**
  * Resolves high-level primary role and granular permissions from Frappe roles array.
- * If user does not possess either Director or Sales User privileges, returns hasAuthorizedRole: false.
+ * Priority: Director -> Operations -> Sales User -> Unauthorized
  */
 export function resolveUserRoleAndPermissions(roles: string[] = []): RoleResolutionResult {
   const isDirector = roles.some((r) =>
@@ -50,6 +51,27 @@ export function resolveUserRoleAndPermissions(roles: string[] = []): RoleResolut
         canEditStudents: true,
         canViewSystemStatus: true,
         canViewExecutiveFinancials: true,
+        canViewTotalPending: true,
+      },
+    };
+  }
+
+  const isOperations = roles.some((r) =>
+    ["Operations", "Operations User", "Operations Manager", "Academics User"].includes(r)
+  );
+
+  if (isOperations) {
+    return {
+      primaryRole: "Operations",
+      hasAuthorizedRole: true,
+      permissions: {
+        canViewFees: true,
+        canManageFees: true,
+        canAdmitStudents: true,
+        canEditStudents: true,
+        canViewSystemStatus: true,
+        canViewExecutiveFinancials: true,
+        canViewTotalPending: false, // Total pending fees hidden; program/class pending fees visible
       },
     };
   }
@@ -69,6 +91,7 @@ export function resolveUserRoleAndPermissions(roles: string[] = []): RoleResolut
         canEditStudents: true,
         canViewSystemStatus: false,
         canViewExecutiveFinancials: false,
+        canViewTotalPending: false,
       },
     };
   }
