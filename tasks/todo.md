@@ -371,6 +371,19 @@
   - [x] Update `src/app/fees/page.tsx`: Hide Tier 1 company-wide Pending Balance top KPI card for Operations, keep all program, class, and format pending fees visible
   - [x] Verify type checking (`npx tsc --noEmit`) and verify visual behavior in browser
 
+- [x] **Step 49: 5-Tier Financial Drilldown Architecture (Course Stream: Regular vs Crash Course)**
+  - [x] Deep study existing hierarchy, student admission flow, and Frappe data structures
+  - [x] Identify root cause: Tier 2 (Class Level) jumped directly to Formats, skipping Course Stream (Regular vs Crash Course)
+  - [x] Design complete 5-Tier Drilldown Architecture matching user domain logic
+  - [x] Receive user command to implement ("fix it")
+  - [x] Update `/api/fees/summary/route.ts` to include `course_type` in enriched ledgers
+  - [x] Implement Tier 3 (Course Stream: Regular vs Crash Course) in `src/app/fees/page.tsx`
+  - [x] Implement conditional Tier 4: Formats (1:1, 1:3, Micro) for Regular, and Crash Batches for Crash Course in `src/app/fees/page.tsx`
+  - [x] Connect Tier 5 Student Fee Ledger Roster Table with dynamic filtering in `src/app/fees/page.tsx`
+  - [x] Mirror structure to `src/app/students/page.tsx` for directory parity
+  - [x] Type check (`npx tsc --noEmit`) to verify 0 errors
+  - [x] Run dev server and verify behavior in browser
+
 
 
 

@@ -61,6 +61,7 @@ interface FeeLedger {
   fee_status: string;
   program?: string;
   class_level?: string;
+  course_type?: string;
   delivery_mode?: string;
   batch_name?: string;
   status?: string;
@@ -145,9 +146,12 @@ function FeesPageContent() {
   // Multi-tier Financial Drill-down state:
   // Tier 1: activeProgram (null => All Programs view)
   // Tier 2: selectedClass (null => Classes view under activeProgram)
-  // Tier 3: selectedFormat (null => Formats view under selectedClass; when set => Student Ledger Table)
+  // Tier 3: selectedStream (null => Course Streams view under selectedClass: Regular vs Crash Course)
+  // Tier 4: selectedFormat (null => Formats / Batches view under selectedStream)
+  // Tier 5: selectedFormat is set (when set => Student Ledger Table)
   const [activeProgram, setActiveProgram] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [selectedStream, setSelectedStream] = useState<"Regular" | "Crash Course" | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
 
   const loadFeeData = async () => {
@@ -190,6 +194,17 @@ function FeesPageContent() {
     );
   };
 
+  // Helper to distinguish Regular vs Crash Course
+  const isLedgerCrash = (l: FeeLedger) => {
+    return (
+      l.course_type === "Crash Course" ||
+      l.delivery_mode === "Crash Course" ||
+      Boolean(l.batch_name && l.batch_name.toLowerCase().includes("crash"))
+    );
+  };
+
+  const isLedgerRegular = (l: FeeLedger) => !isLedgerCrash(l);
+
   // Helper to calculate financial metrics for any ledger subset
   const calcMetrics = (ledgerList: FeeLedger[]) => {
     let gross = 0;
@@ -226,9 +241,37 @@ function FeesPageContent() {
     return programLedgers.filter((l) => l.class_level?.includes(selectedClass));
   }, [programLedgers, selectedClass]);
 
-  // Format options depending on program type
+  // Filter ledgers for selected stream (Regular vs Crash Course)
+  const streamLedgers = useMemo(() => {
+    if (!selectedStream) return classLedgers;
+    if (selectedStream === "Crash Course") {
+      return classLedgers.filter(isLedgerCrash);
+    }
+    return classLedgers.filter(isLedgerRegular);
+  }, [classLedgers, selectedStream]);
+
+  // Format options depending on program type and stream
   const isStateBoard = activeProgram === "State Board";
+  const isCrash = selectedStream === "Crash Course";
+
   const formatOptions = useMemo(() => {
+    if (isCrash) {
+      const defaultBatches = ["Crash Batch 1", "Crash Batch 2", "Crash Batch 3"];
+      const customBatches: string[] = [];
+      for (const l of streamLedgers) {
+        if (l.batch_name && !defaultBatches.includes(l.batch_name) && l.batch_name.toLowerCase().includes("crash")) {
+          if (!customBatches.includes(l.batch_name)) {
+            customBatches.push(l.batch_name);
+          }
+        }
+      }
+      return [...defaultBatches, ...customBatches].map((b) => ({
+        id: b,
+        label: b,
+        desc: "Fast Track Exam Sprint & Revision Cohort",
+      }));
+    }
+
     if (isStateBoard) {
       return [
         { id: "Batch A", label: "Batch A", desc: "Cohort Morning / Primary Track" },
@@ -236,15 +279,19 @@ function FeesPageContent() {
         { id: "Batch C", label: "Batch C", desc: "Cohort Weekend Track" },
       ];
     }
+
     return [
       { id: "1:1 Tutoring", label: "1:1 Tutoring", desc: "Dedicated 1-on-1 Personalized Mentorship" },
       { id: "1:3 Group", label: "1:3 Group", desc: "Focused Triad Micro-Group" },
       { id: "Micro Batch", label: "Micro Batch", desc: "Small Cohort Delivery Batch" },
     ];
-  }, [isStateBoard]);
+  }, [isCrash, isStateBoard, streamLedgers]);
 
-  // Helper to match ledger against format
+  // Helper to match ledger against format or batch
   const isLedgerInFormat = (l: FeeLedger, formatId: string) => {
+    if (isCrash) {
+      return l.batch_name === formatId || (!l.batch_name && formatId === "Crash Batch 1");
+    }
     if (isStateBoard) {
       return l.batch_name?.includes(formatId) || (!l.batch_name && formatId === "Batch A");
     }
@@ -254,9 +301,9 @@ function FeesPageContent() {
     );
   };
 
-  // Filtered ledgers for Tier 4 Table Roster
+  // Filtered ledgers for Tier 5 Table Roster
   const rosterLedgers = useMemo(() => {
-    let list = classLedgers;
+    let list = streamLedgers;
     if (selectedFormat && selectedFormat !== "All") {
       list = list.filter((l) => isLedgerInFormat(l, selectedFormat));
     }
@@ -274,7 +321,7 @@ function FeesPageContent() {
       list = list.filter((l) => l.fee_status === statusFilter);
     }
     return list;
-  }, [classLedgers, selectedFormat, search, statusFilter]);
+  }, [streamLedgers, selectedFormat, search, statusFilter, isCrash, isStateBoard]);
 
   // Export Roster to CSV
   const exportToCSV = () => {
@@ -284,7 +331,8 @@ function FeesPageContent() {
       "Student Name",
       "Program",
       "Class Level",
-      "Delivery Mode",
+      "Course Stream",
+      "Delivery Mode / Batch",
       "Gross Fee",
       "Discount",
       "Net Payable",
@@ -297,7 +345,8 @@ function FeesPageContent() {
       `"${l.student_name}"`,
       `"${l.program || ''}"`,
       `"${l.class_level || ''}"`,
-      `"${l.delivery_mode || ''}"`,
+      `"${l.course_type || (isLedgerCrash(l) ? 'Crash Course' : 'Regular')}"`,
+      `"${l.delivery_mode || l.batch_name || ''}"`,
       l.gross_fee,
       l.discount_amount,
       l.net_payable,
@@ -309,15 +358,16 @@ function FeesPageContent() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `SmartUp_Fee_Ledger_${activeProgram || 'All'}_Class_${selectedClass || 'All'}.csv`);
+    link.setAttribute("download", `SmartUp_Fee_Ledger_${activeProgram || 'All'}_Class_${selectedClass || 'All'}_${selectedStream || 'All'}_${selectedFormat || 'All'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Program metrics for Tier 2 Header
+  // Financial metrics calculated at each level
   const activeProgramMetrics = useMemo(() => calcMetrics(programLedgers), [programLedgers]);
   const activeClassMetrics = useMemo(() => calcMetrics(classLedgers), [classLedgers]);
+  const activeStreamMetrics = useMemo(() => calcMetrics(streamLedgers), [streamLedgers]);
   const activeCohortMetrics = useMemo(() => calcMetrics(rosterLedgers), [rosterLedgers]);
 
   return (
@@ -333,6 +383,7 @@ function FeesPageContent() {
             onClick={() => {
               setActiveProgram(null);
               setSelectedClass(null);
+              setSelectedStream(null);
               setSelectedFormat(null);
               setSearch("");
             }}
@@ -349,6 +400,7 @@ function FeesPageContent() {
               <button
                 onClick={() => {
                   setSelectedClass(null);
+                  setSelectedStream(null);
                   setSelectedFormat(null);
                   setSearch("");
                 }}
@@ -366,6 +418,24 @@ function FeesPageContent() {
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
               <button
                 onClick={() => {
+                  setSelectedStream(null);
+                  setSelectedFormat(null);
+                  setSearch("");
+                }}
+                className={`hover:text-slate-900 transition-colors cursor-pointer ${
+                  !selectedStream ? "text-slate-900 font-semibold" : "text-slate-500"
+                }`}
+              >
+                Class {selectedClass}
+              </button>
+            </>
+          )}
+
+          {selectedStream && (
+            <>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+              <button
+                onClick={() => {
                   setSelectedFormat(null);
                   setSearch("");
                 }}
@@ -373,7 +443,7 @@ function FeesPageContent() {
                   !selectedFormat ? "text-slate-900 font-semibold" : "text-slate-500"
                 }`}
               >
-                Class {selectedClass}
+                {selectedStream}
               </button>
             </>
           )}
@@ -382,7 +452,7 @@ function FeesPageContent() {
             <>
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
               <span className="text-slate-900 font-semibold px-2 py-0.5 rounded bg-slate-100 border border-slate-200/80">
-                {selectedFormat === "All" ? "Combined Class Ledger" : selectedFormat}
+                {selectedFormat === "All" ? `All ${selectedStream} Ledgers` : selectedFormat}
               </span>
             </>
           )}
@@ -835,6 +905,7 @@ function FeesPageContent() {
                     key={cls}
                     onClick={() => {
                       setSelectedClass(cls);
+                      setSelectedStream(null);
                       setSelectedFormat(null);
                     }}
                     className="relative bg-white border border-slate-200/80 hover:border-violet-300 rounded-xl p-3.5 space-y-2.5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
@@ -902,19 +973,19 @@ function FeesPageContent() {
                       />
                     </div>
 
-                    {/* Formats & Action */}
+                    {/* Streams & Action */}
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
                       <div className="flex items-center gap-1 font-mono text-[9px]">
                         <span className="px-1.5 py-0.2 rounded font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
-                          1:1: {cLedgers.filter(l => l.delivery_mode?.includes("1:1")).length}
+                          Regular: {cLedgers.filter(isLedgerRegular).length}
                         </span>
-                        <span className="px-1.5 py-0.2 rounded font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
-                          1:3: {cLedgers.filter(l => l.delivery_mode?.includes("1:3")).length}
+                        <span className="px-1.5 py-0.2 rounded font-semibold bg-amber-50 text-amber-800 border border-amber-200/60">
+                          Crash: {cLedgers.filter(isLedgerCrash).length}
                         </span>
                       </div>
 
                       <span className="text-slate-600 group-hover:text-slate-950 font-semibold flex items-center gap-0.5 transition-colors">
-                        Formats
+                        Streams
                         <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
@@ -927,9 +998,9 @@ function FeesPageContent() {
       )}
 
       {/* ========================================================================= */}
-      {/* TIER 3: DELIVERY FORMAT-WISE FINANCIAL BREAKDOWN */}
+      {/* TIER 3: COURSE STREAM BREAKDOWN (Regular vs Crash Course) */}
       {/* ========================================================================= */}
-      {activeProgram && selectedClass && !selectedFormat && (
+      {activeProgram && selectedClass && !selectedStream && (
         <div className="space-y-7 animate-in fade-in duration-150">
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/80">
@@ -937,18 +1008,310 @@ function FeesPageContent() {
               <button
                 onClick={() => {
                   setSelectedClass(null);
+                  setSelectedStream(null);
                   setSelectedFormat(null);
                 }}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Back to Classes
+                Back to Class Levels
               </button>
               <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                {activeProgram} — Class {selectedClass} Delivery Formats
+                {activeProgram} — Class {selectedClass} Academic Streams
               </h2>
               <p className="text-xs text-slate-500">
                 Class {selectedClass} Total: ₹ {activeClassMetrics.net.toLocaleString()} Net • ₹ {activeClassMetrics.collected.toLocaleString()} Collected across {activeClassMetrics.count} students
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setSelectedStream("Regular");
+                setSelectedFormat("All");
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              View Combined Class {selectedClass} Ledger ({activeClassMetrics.count})
+            </button>
+          </div>
+
+          {/* 3 Executive Summary Cards for this Class */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Class {selectedClass} Net Fees</span>
+              <div className="flex items-baseline">
+                <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
+                  <AnimatedNumber value={activeClassMetrics.net} />
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">Total contractual commitment</p>
+            </div>
+
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Deposited</span>
+              <div className="flex items-baseline">
+                <span className="text-sm font-semibold text-emerald-600/70 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-emerald-600 font-feature-settings-['tnum']">
+                  <AnimatedNumber value={activeClassMetrics.collected} />
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-700 font-semibold">{activeClassMetrics.collectionRate}% realization rate</p>
+            </div>
+
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Outstanding Pending</span>
+              <div className="flex items-baseline">
+                <span className="text-sm font-semibold text-slate-400 mr-1">₹</span>
+                <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-950 font-feature-settings-['tnum']">
+                  <AnimatedNumber value={activeClassMetrics.pending} />
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">Due across {activeClassMetrics.count} active ledgers</p>
+            </div>
+          </div>
+
+          {/* Stream Cards Grid */}
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Select Course Stream
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Stream 1: Regular Course */}
+              {(() => {
+                const regLedgers = classLedgers.filter(isLedgerRegular);
+                const regMetrics = calcMetrics(regLedgers);
+                return (
+                  <div
+                    onClick={() => {
+                      setSelectedStream("Regular");
+                      setSelectedFormat(null);
+                    }}
+                    className="relative bg-white border border-slate-200/80 hover:border-violet-300 rounded-xl p-4 space-y-3 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                          <BookOpen className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-slate-900 group-hover:text-slate-950 transition-colors">
+                              Regular Course
+                            </h4>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-violet-50 text-violet-700 border border-violet-200/60 font-mono">
+                              Full Year
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {regMetrics.count} enrolled student{regMetrics.count === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="w-7 h-7 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 line-clamp-2">
+                      Full academic curriculum with personalized 1:1, 1:3 group, and micro batch delivery formats.
+                    </p>
+
+                    {/* Net Fees Hero Amount */}
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Total Net Fees
+                      </span>
+                      <div className="flex items-baseline">
+                        <span className="text-xs font-semibold text-slate-400 mr-1">₹</span>
+                        <span className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
+                          <AnimatedNumber value={regMetrics.net} />
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Two-Column Split (Collected vs Pending) */}
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="bg-emerald-50/70 border border-emerald-100/80 rounded-lg p-2 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
+                          <span className="font-bold text-emerald-700 font-mono">{regMetrics.collectionRate}%</span>
+                        </div>
+                        <div className="text-xs sm:text-[13px] font-bold text-emerald-950 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={regMetrics.collected} />
+                        </div>
+                      </div>
+                      <div className="bg-slate-50/90 border border-slate-200/70 rounded-lg p-2 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-slate-600 uppercase tracking-wider">Pending</span>
+                          <span className="font-bold text-slate-500 font-mono">{regMetrics.count > 0 ? 100 - regMetrics.collectionRate : 0}%</span>
+                        </div>
+                        <div className="text-xs sm:text-[13px] font-bold text-slate-950 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={regMetrics.pending} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mini Progress Track */}
+                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, regMetrics.collectionRate)}%` }}
+                      />
+                    </div>
+
+                    {/* Footer Indicator */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <div className="flex items-center gap-1 font-mono text-[9px] text-slate-600">
+                        <span className="px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200/60 font-semibold">
+                          1:1: {regLedgers.filter(l => l.delivery_mode?.includes("1:1")).length}
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200/60 font-semibold">
+                          1:3: {regLedgers.filter(l => l.delivery_mode?.includes("1:3")).length}
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200/60 font-semibold">
+                          Micro: {regLedgers.filter(l => l.delivery_mode?.toLowerCase().includes("micro")).length}
+                        </span>
+                      </div>
+                      <span className="text-slate-700 group-hover:text-slate-950 font-bold flex items-center gap-0.5 transition-colors">
+                        Explore Formats
+                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Stream 2: Crash Course */}
+              {(() => {
+                const crashLedgers = classLedgers.filter(isLedgerCrash);
+                const crashMetrics = calcMetrics(crashLedgers);
+                return (
+                  <div
+                    onClick={() => {
+                      setSelectedStream("Crash Course");
+                      setSelectedFormat(null);
+                    }}
+                    className="relative bg-white border border-slate-200/80 hover:border-amber-300 rounded-xl p-4 space-y-3 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                          <Sparkles className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-slate-900 group-hover:text-slate-950 transition-colors">
+                              Crash Course
+                            </h4>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200/60 font-mono">
+                              Fast Track
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {crashMetrics.count} enrolled student{crashMetrics.count === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="w-7 h-7 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 line-clamp-2">
+                      Exam sprint batches, fast-track revision cohorts, and test-prep intensive programs.
+                    </p>
+
+                    {/* Net Fees Hero Amount */}
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Total Net Fees
+                      </span>
+                      <div className="flex items-baseline">
+                        <span className="text-xs font-semibold text-slate-400 mr-1">₹</span>
+                        <span className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
+                          <AnimatedNumber value={crashMetrics.net} />
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Two-Column Split (Collected vs Pending) */}
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="bg-emerald-50/70 border border-emerald-100/80 rounded-lg p-2 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
+                          <span className="font-bold text-emerald-700 font-mono">{crashMetrics.collectionRate}%</span>
+                        </div>
+                        <div className="text-xs sm:text-[13px] font-bold text-emerald-950 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={crashMetrics.collected} />
+                        </div>
+                      </div>
+                      <div className="bg-slate-50/90 border border-slate-200/70 rounded-lg p-2 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-slate-600 uppercase tracking-wider">Pending</span>
+                          <span className="font-bold text-slate-500 font-mono">{crashMetrics.count > 0 ? 100 - crashMetrics.collectionRate : 0}%</span>
+                        </div>
+                        <div className="text-xs sm:text-[13px] font-bold text-slate-950 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={crashMetrics.pending} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mini Progress Track */}
+                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-amber-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, crashMetrics.collectionRate)}%` }}
+                      />
+                    </div>
+
+                    {/* Footer Indicator */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <div className="flex items-center gap-1 font-mono text-[9px] text-slate-600">
+                        <span className="px-1.5 py-0.2 rounded bg-amber-50 border border-amber-200/60 font-semibold text-amber-800">
+                          Crash Batches (1, 2, 3...)
+                        </span>
+                      </div>
+                      <span className="text-slate-700 group-hover:text-slate-950 font-bold flex items-center gap-0.5 transition-colors">
+                        Explore Batches
+                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TIER 4: DELIVERY FORMAT-WISE OR CRASH BATCH-WISE FINANCIAL BREAKDOWN */}
+      {/* ========================================================================= */}
+      {activeProgram && selectedClass && selectedStream && !selectedFormat && (
+        <div className="space-y-7 animate-in fade-in duration-150">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/80">
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  setSelectedStream(null);
+                  setSelectedFormat(null);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to Course Streams
+              </button>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                {activeProgram} — Class {selectedClass} • {selectedStream}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {selectedStream} Total: ₹ {activeStreamMetrics.net.toLocaleString()} Net • ₹ {activeStreamMetrics.collected.toLocaleString()} Collected across {activeStreamMetrics.count} students
               </p>
             </div>
 
@@ -957,135 +1320,148 @@ function FeesPageContent() {
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" />
-              View Combined Class Ledger ({activeClassMetrics.count})
+              View Combined {selectedStream} Ledger ({activeStreamMetrics.count})
             </button>
           </div>
 
-          {/* Delivery Format Cards — Elevated Design */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {formatOptions.map((fmt) => {
-              const fLedgers = classLedgers.filter((l) => isLedgerInFormat(l, fmt.id));
-              const metrics = calcMetrics(fLedgers);
+          {/* Section Heading */}
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              {isCrash ? "Select Crash Course Batch" : isStateBoard ? "Select State Batch Cohort" : "Select Delivery Format (Regular)"}
+            </h3>
 
-              // Distinct avatar icon based on format
-              const getFormatAvatar = () => {
-                if (fmt.id.includes("1:1")) {
+            {/* Delivery Format / Batch Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {formatOptions.map((fmt) => {
+                const fLedgers = streamLedgers.filter((l) => isLedgerInFormat(l, fmt.id));
+                const metrics = calcMetrics(fLedgers);
+
+                // Distinct avatar icon based on format
+                const getFormatAvatar = () => {
+                  if (isCrash) {
+                    return {
+                      icon: <Sparkles className="w-4 h-4 text-white" />,
+                      bg: "bg-gradient-to-br from-amber-500 to-orange-600 shadow-xs shadow-amber-500/20"
+                    };
+                  }
+                  if (fmt.id.includes("1:1")) {
+                    return {
+                      icon: <User className="w-4 h-4 text-white" />,
+                      bg: "bg-gradient-to-br from-violet-600 to-purple-600 shadow-xs shadow-violet-500/20"
+                    };
+                  }
+                  if (fmt.id.includes("1:3")) {
+                    return {
+                      icon: <Users className="w-4 h-4 text-white" />,
+                      bg: "bg-gradient-to-br from-indigo-600 to-sky-600 shadow-xs shadow-indigo-500/20"
+                    };
+                  }
                   return {
-                    icon: <User className="w-4 h-4 text-white" />,
-                    bg: "bg-gradient-to-br from-violet-600 to-purple-600 shadow-xs shadow-violet-500/20"
+                    icon: <School className="w-4 h-4 text-white" />,
+                    bg: "bg-gradient-to-br from-emerald-600 to-teal-600 shadow-xs shadow-emerald-500/20"
                   };
-                }
-                if (fmt.id.includes("1:3")) {
-                  return {
-                    icon: <Users className="w-4 h-4 text-white" />,
-                    bg: "bg-gradient-to-br from-indigo-600 to-sky-600 shadow-xs shadow-indigo-500/20"
-                  };
-                }
-                return {
-                  icon: <School className="w-4 h-4 text-white" />,
-                  bg: "bg-gradient-to-br from-emerald-600 to-teal-600 shadow-xs shadow-emerald-500/20"
                 };
-              };
 
-              const avatar = getFormatAvatar();
+                const avatar = getFormatAvatar();
 
-              return (
-                <div
-                  key={fmt.id}
-                  onClick={() => setSelectedFormat(fmt.id)}
-                  className="relative bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl p-3.5 space-y-2.5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${avatar.bg}`}>
-                        {avatar.icon}
+                return (
+                  <div
+                    key={fmt.id}
+                    onClick={() => setSelectedFormat(fmt.id)}
+                    className="relative bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl p-3.5 space-y-2.5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${avatar.bg}`}>
+                          {avatar.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-xs sm:text-[13px] text-slate-900 group-hover:text-slate-950 transition-colors truncate">
+                            {fmt.label}
+                          </h3>
+                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200/60">
+                            {fmt.id}
+                          </span>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-xs sm:text-[13px] text-slate-900 group-hover:text-slate-950 transition-colors truncate">
-                          {fmt.label}
-                        </h3>
-                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200/60">
-                          {fmt.id}
+
+                      <div className="w-6.5 h-6.5 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 line-clamp-1">
+                      {fmt.desc}
+                    </p>
+
+                    {/* Net Fees Hero Amount */}
+                    <div className="space-y-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Total Net Fees
+                      </span>
+                      <div className="flex items-baseline">
+                        <span className="text-xs font-semibold text-slate-400 mr-1">₹</span>
+                        <span className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
+                          <AnimatedNumber value={metrics.net} />
                         </span>
                       </div>
                     </div>
 
-                    <div className="w-6.5 h-6.5 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
-                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    {/* Two-Column Split (Collected vs Pending) */}
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="bg-emerald-50/70 border border-emerald-100/90 rounded-lg p-1.5 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
+                          <span className="font-bold text-emerald-700 font-mono">{metrics.collectionRate}%</span>
+                        </div>
+                        <div className="text-xs sm:text-[13px] font-bold text-emerald-950 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={metrics.collected} />
+                        </div>
+                      </div>
+                      <div className="bg-slate-50/90 border border-slate-200/70 rounded-lg p-1.5 space-y-0.5">
+                        <div className="flex items-center justify-between text-[8.5px]">
+                          <span className="font-bold text-slate-600 uppercase tracking-wider">Pending</span>
+                          <span className="font-bold text-slate-500 font-mono">{metrics.count > 0 ? 100 - metrics.collectionRate : 0}%</span>
+                        </div>
+                        <div className="text-xs sm:text-[13px] font-bold text-slate-900 font-feature-settings-['tnum'] truncate">
+                          ₹ <AnimatedNumber value={metrics.pending} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <p className="text-[11px] text-slate-500 line-clamp-1">
-                    {fmt.desc}
-                  </p>
+                    {/* Mini Progress Track */}
+                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, metrics.collectionRate)}%` }}
+                      />
+                    </div>
 
-                  {/* Net Fees Hero Amount */}
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Total Net Fees
-                    </span>
-                    <div className="flex items-baseline">
-                      <span className="text-xs font-semibold text-slate-400 mr-1">₹</span>
-                      <span className="text-lg sm:text-xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">
-                        <AnimatedNumber value={metrics.net} />
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60 font-mono">
+                        {metrics.count} student{metrics.count === 1 ? "" : "s"}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-700 group-hover:text-slate-950 flex items-center gap-0.5 transition-colors">
+                        Open Roster
+                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
                   </div>
-
-                  {/* Two-Column Split (Collected vs Pending) */}
-                  <div className="grid grid-cols-2 gap-1.5 text-xs">
-                    <div className="bg-emerald-50/70 border border-emerald-100/90 rounded-lg p-1.5 space-y-0.5">
-                      <div className="flex items-center justify-between text-[8.5px]">
-                        <span className="font-bold text-emerald-800 uppercase tracking-wider">Collected</span>
-                        <span className="font-bold text-emerald-700 font-mono">{metrics.collectionRate}%</span>
-                      </div>
-                      <div className="text-xs sm:text-[13px] font-bold text-emerald-950 font-feature-settings-['tnum'] truncate">
-                        ₹ <AnimatedNumber value={metrics.collected} />
-                      </div>
-                    </div>
-                    <div className="bg-slate-50/90 border border-slate-200/70 rounded-lg p-1.5 space-y-0.5">
-                      <div className="flex items-center justify-between text-[8.5px]">
-                        <span className="font-bold text-slate-600 uppercase tracking-wider">Pending</span>
-                        <span className="font-bold text-slate-500 font-mono">{metrics.count > 0 ? 100 - metrics.collectionRate : 0}%</span>
-                      </div>
-                      <div className="text-xs sm:text-[13px] font-bold text-slate-900 font-feature-settings-['tnum'] truncate">
-                        ₹ <AnimatedNumber value={metrics.pending} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mini Progress Track */}
-                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, metrics.collectionRate)}%` }}
-                    />
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60 font-mono">
-                      {metrics.count} student{metrics.count === 1 ? "" : "s"}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-700 group-hover:text-slate-950 flex items-center gap-0.5 transition-colors">
-                      Open Roster
-                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           {/* Quick Action Banner */}
           <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <span className="text-xs font-medium text-slate-600">
-              Need to see all students in Class {selectedClass} regardless of delivery mode?
+              Need to see all students in Class {selectedClass} ({selectedStream}) regardless of format or batch?
             </span>
             <button
               onClick={() => setSelectedFormat("All")}
               className="text-xs font-bold text-slate-900 hover:text-black cursor-pointer underline underline-offset-2 self-start sm:self-auto"
             >
-              Open Combined Class {selectedClass} Ledger ({activeClassMetrics.count} students) →
+              Open Combined Class {selectedClass} {selectedStream} Ledger ({activeStreamMetrics.count} students) →
             </button>
           </div>
 
@@ -1093,9 +1469,9 @@ function FeesPageContent() {
       )}
 
       {/* ========================================================================= */}
-      {/* TIER 4: STUDENT FEE LEDGER ROSTER */}
+      {/* TIER 5: STUDENT FEE LEDGER ROSTER */}
       {/* ========================================================================= */}
-      {activeProgram && selectedClass && selectedFormat && (
+      {activeProgram && selectedClass && selectedStream && selectedFormat && (
         <div className="space-y-7 animate-in fade-in duration-150">
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/80">
@@ -1105,10 +1481,10 @@ function FeesPageContent() {
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Back to Format Cards
+                Back to {isCrash ? "Crash Batches" : "Delivery Formats"}
               </button>
               <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                {activeProgram} — Class {selectedClass} ({selectedFormat === "All" ? "All Formats" : selectedFormat})
+                {activeProgram} — Class {selectedClass} • {selectedStream} ({selectedFormat === "All" ? `All ${selectedStream} Formats` : selectedFormat})
               </h2>
               <p className="text-xs text-slate-500">
                 Total Net: ₹ {activeCohortMetrics.net.toLocaleString()} • Collected: ₹ {activeCohortMetrics.collected.toLocaleString()} • Pending: ₹ {activeCohortMetrics.pending.toLocaleString()} across {rosterLedgers.length} students
@@ -1170,13 +1546,13 @@ function FeesPageContent() {
               <div className="p-12 text-center space-y-3">
                 <GraduationCap className="w-9 h-9 text-slate-300 mx-auto" />
                 <div className="text-sm font-semibold text-slate-800">
-                  No fee ledgers found in {selectedFormat === "All" ? `Class ${selectedClass}` : selectedFormat}
+                  No fee ledgers found in {selectedFormat === "All" ? `Class ${selectedClass} (${selectedStream})` : selectedFormat}
                 </div>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Admit your first student into {activeProgram} Class {selectedClass} ({selectedFormat}).
+                  Admit your first student into {activeProgram} Class {selectedClass} ({selectedStream} • {selectedFormat}).
                 </p>
                 <Link
-                  href={`/students/new?program=${encodeURIComponent(activeProgram)}&class=${selectedClass}`}
+                  href={`/students/new?program=${encodeURIComponent(activeProgram)}&class=${selectedClass}&stream=${encodeURIComponent(selectedStream || 'Regular')}`}
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-xs"
                 >
                   <UserPlus className="w-3.5 h-3.5" />

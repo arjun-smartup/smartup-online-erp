@@ -93,9 +93,12 @@ export default function StudentsDirectoryPage() {
   // Multi-tier Drill-down state:
   // Tier 1: activeProgram (null => Programs view)
   // Tier 2: selectedClass (null => Classes view under activeProgram)
-  // Tier 3: selectedFormat (null => Formats view under selectedClass; when set => Students roster table)
+  // Tier 3: selectedStream (null => Course Streams view under selectedClass: Regular vs Crash Course)
+  // Tier 4: selectedFormat (null => Formats / Batches view under selectedStream)
+  // Tier 5: selectedFormat is set (when set => Students roster table)
   const [activeProgram, setActiveProgram] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [selectedStream, setSelectedStream] = useState<"Regular" | "Crash Course" | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
 
   const loadStudents = async () => {
@@ -127,6 +130,17 @@ export default function StudentsDirectoryPage() {
     );
   };
 
+  // Helpers to distinguish Regular vs Crash Course
+  const isStudentCrash = (s: StudentItem) => {
+    return (
+      s.course_type === "Crash Course" ||
+      s.delivery_mode === "Crash Course" ||
+      Boolean(s.batch_name && s.batch_name.toLowerCase().includes("crash"))
+    );
+  };
+
+  const isStudentRegular = (s: StudentItem) => !isStudentCrash(s);
+
   // Compute live actual metrics
   const totalStudents = students.length;
   const activeStudents = students.filter((s) => s.status === "Active" || !s.status).length;
@@ -149,9 +163,37 @@ export default function StudentsDirectoryPage() {
     return programStudents.filter((s) => s.class_level?.includes(selectedClass));
   }, [programStudents, selectedClass]);
 
-  // Format list depending on program type
+  // Filter students for selected stream (Regular vs Crash Course)
+  const streamStudents = useMemo(() => {
+    if (!selectedStream) return classStudents;
+    if (selectedStream === "Crash Course") {
+      return classStudents.filter(isStudentCrash);
+    }
+    return classStudents.filter(isStudentRegular);
+  }, [classStudents, selectedStream]);
+
+  // Format list depending on program type and selected stream
   const isStateBoard = activeProgram === "State Board";
+  const isCrash = selectedStream === "Crash Course";
+
   const formatOptions = useMemo(() => {
+    if (isCrash) {
+      const defaultBatches = ["Crash Batch 1", "Crash Batch 2", "Crash Batch 3"];
+      const customBatches: string[] = [];
+      for (const s of streamStudents) {
+        if (s.batch_name && !defaultBatches.includes(s.batch_name) && s.batch_name.toLowerCase().includes("crash")) {
+          if (!customBatches.includes(s.batch_name)) {
+            customBatches.push(s.batch_name);
+          }
+        }
+      }
+      return [...defaultBatches, ...customBatches].map((b) => ({
+        id: b,
+        label: b,
+        desc: "Fast Track Exam Sprint & Revision Cohort",
+      }));
+    }
+
     if (isStateBoard) {
       return [
         { id: "Batch A", label: "Batch A", desc: "Cohort Morning / Primary Track" },
@@ -159,15 +201,19 @@ export default function StudentsDirectoryPage() {
         { id: "Batch C", label: "Batch C", desc: "Cohort Weekend Track" },
       ];
     }
+
     return [
       { id: "1:1 Tutoring", label: "1:1 Tutoring", desc: "Dedicated 1-on-1 Personalized Mentorship" },
       { id: "1:3 Group", label: "1:3 Group", desc: "Focused Triad Micro-Group" },
       { id: "Micro Batch", label: "Micro Batch", desc: "Small Cohort Delivery Batch" },
     ];
-  }, [isStateBoard]);
+  }, [isCrash, isStateBoard, streamStudents]);
 
-  // Helper to match student against format
+  // Helper to match student against format or batch
   const isStudentInFormat = (s: StudentItem, formatId: string) => {
+    if (isCrash) {
+      return s.batch_name === formatId || (!s.batch_name && formatId === "Crash Batch 1");
+    }
     if (isStateBoard) {
       return s.batch_name?.includes(formatId) || (!s.batch_name && formatId === "Batch A");
     }
@@ -177,8 +223,8 @@ export default function StudentsDirectoryPage() {
 
   // Students for the final table roster
   const rosterStudents = useMemo(() => {
-    let list = classStudents;
-    if (selectedFormat) {
+    let list = streamStudents;
+    if (selectedFormat && selectedFormat !== "All") {
       list = list.filter((s) => isStudentInFormat(s, selectedFormat));
     }
     if (rosterSearch) {
@@ -191,7 +237,7 @@ export default function StudentsDirectoryPage() {
       );
     }
     return list;
-  }, [classStudents, selectedFormat, rosterSearch]);
+  }, [streamStudents, selectedFormat, rosterSearch, isCrash, isStateBoard]);
 
   // Filter program cards by search query
   const filteredPrograms = useMemo(() => {
@@ -218,6 +264,7 @@ export default function StudentsDirectoryPage() {
             onClick={() => {
               setActiveProgram(null);
               setSelectedClass(null);
+              setSelectedStream(null);
               setSelectedFormat(null);
               setRosterSearch("");
             }}
@@ -234,6 +281,7 @@ export default function StudentsDirectoryPage() {
               <button
                 onClick={() => {
                   setSelectedClass(null);
+                  setSelectedStream(null);
                   setSelectedFormat(null);
                   setRosterSearch("");
                 }}
@@ -251,6 +299,24 @@ export default function StudentsDirectoryPage() {
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
               <button
                 onClick={() => {
+                  setSelectedStream(null);
+                  setSelectedFormat(null);
+                  setRosterSearch("");
+                }}
+                className={`hover:text-slate-900 transition-colors cursor-pointer ${
+                  !selectedStream ? "text-slate-900 font-semibold" : "text-slate-500"
+                }`}
+              >
+                Class {selectedClass}
+              </button>
+            </>
+          )}
+
+          {selectedStream && (
+            <>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+              <button
+                onClick={() => {
                   setSelectedFormat(null);
                   setRosterSearch("");
                 }}
@@ -258,7 +324,7 @@ export default function StudentsDirectoryPage() {
                   !selectedFormat ? "text-slate-900 font-semibold" : "text-slate-500"
                 }`}
               >
-                Class {selectedClass}
+                {selectedStream}
               </button>
             </>
           )}
@@ -267,7 +333,7 @@ export default function StudentsDirectoryPage() {
             <>
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
               <span className="text-slate-900 font-semibold px-2 py-0.5 rounded bg-slate-100 border border-slate-200/80">
-                {selectedFormat}
+                {selectedFormat === "All" ? `All ${selectedStream} Students` : selectedFormat}
               </span>
             </>
           )}
@@ -691,6 +757,7 @@ export default function StudentsDirectoryPage() {
                     key={cls}
                     onClick={() => {
                       setSelectedClass(cls);
+                      setSelectedStream(null);
                       setSelectedFormat(null);
                     }}
                     className="relative bg-white border border-slate-200/80 hover:border-violet-300 rounded-2xl p-4 space-y-3.5 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col justify-between"
@@ -717,23 +784,23 @@ export default function StudentsDirectoryPage() {
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="bg-emerald-50/70 border border-emerald-100/80 rounded-xl p-2 space-y-0.5">
-                        <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider block">1:1 Mentorship</span>
+                        <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider block">Regular</span>
                         <div className="text-xs sm:text-sm font-extrabold text-emerald-950 font-feature-settings-['tnum']">
-                          {cOneToOne} students
+                          {cStudents.filter(isStudentRegular).length} students
                         </div>
                       </div>
-                      <div className="bg-slate-50/90 border border-slate-200/70 rounded-xl p-2 space-y-0.5">
-                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider block">1:3 Triads</span>
-                        <div className="text-xs sm:text-sm font-extrabold text-slate-900 font-feature-settings-['tnum']">
-                          {cTriad} students
+                      <div className="bg-amber-50/90 border border-amber-200/70 rounded-xl p-2 space-y-0.5">
+                        <span className="text-[9px] font-bold text-amber-800 uppercase tracking-wider block">Crash Course</span>
+                        <div className="text-xs sm:text-sm font-extrabold text-amber-950 font-feature-settings-['tnum']">
+                          {cStudents.filter(isStudentCrash).length} students
                         </div>
                       </div>
                     </div>
 
                     <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <span className="text-slate-400 text-[11px] font-medium">Formats & Rosters</span>
+                      <span className="text-slate-400 text-[11px] font-medium">Academic Streams</span>
                       <span className="text-slate-600 group-hover:text-slate-950 font-semibold flex items-center gap-1 transition-colors text-xs">
-                        View Formats
+                        View Streams
                         <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
@@ -746,9 +813,9 @@ export default function StudentsDirectoryPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* TIER 3: DELIVERY FORMAT CARDS (When activeProgram & selectedClass are chosen, but selectedFormat is null) */}
+      {/* TIER 3: COURSE STREAM CARDS (When activeProgram & selectedClass are chosen, but selectedStream is null) */}
       {/* ========================================================================= */}
-      {activeProgram && selectedClass && !selectedFormat && (
+      {activeProgram && selectedClass && !selectedStream && (
         <div className="space-y-6 animate-in fade-in duration-150">
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/80">
@@ -756,6 +823,7 @@ export default function StudentsDirectoryPage() {
               <button
                 onClick={() => {
                   setSelectedClass(null);
+                  setSelectedStream(null);
                   setSelectedFormat(null);
                 }}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
@@ -764,26 +832,170 @@ export default function StudentsDirectoryPage() {
                 Back to Classes
               </button>
               <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                {activeProgram} — Class {selectedClass} Delivery Formats
+                {activeProgram} — Class {selectedClass} Academic Streams
               </h2>
               <p className="text-xs text-slate-500">
-                {classStudents.length} enrolled student{classStudents.length === 1 ? "" : "s"} in Class {selectedClass}. Click a format to open its student roster.
+                {classStudents.length} enrolled student{classStudents.length === 1 ? "" : "s"} in Class {selectedClass}. Select a course stream below.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setSelectedStream("Regular");
+                setSelectedFormat("All");
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
+            >
+              Combined Class {selectedClass} Roster ({classStudents.length})
+            </button>
+          </div>
+
+          {/* Stream Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Stream 1: Regular Course */}
+            {(() => {
+              const regCount = classStudents.filter(isStudentRegular).length;
+              return (
+                <div
+                  onClick={() => {
+                    setSelectedStream("Regular");
+                    setSelectedFormat(null);
+                  }}
+                  className="group bg-white border border-slate-200/80 hover:border-violet-300 rounded-2xl p-5 space-y-3.5 transition-all duration-200 hover:shadow-md shadow-xs cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                        <BookOpen className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-sm text-slate-900 group-hover:text-slate-950 transition-colors">
+                            Regular Course
+                          </h3>
+                          <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200/60">
+                            Full Year
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Comprehensive curriculum with 1:1, 1:3 group, and micro batch tracks.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-7 h-7 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-baseline justify-between">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">{regCount}</span>
+                      <span className="text-xs text-slate-500 font-medium">student{regCount === 1 ? "" : "s"}</span>
+                    </div>
+
+                    <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-950 flex items-center gap-1 transition-colors">
+                      <span>Explore Formats</span>
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Stream 2: Crash Course */}
+            {(() => {
+              const crashCount = classStudents.filter(isStudentCrash).length;
+              return (
+                <div
+                  onClick={() => {
+                    setSelectedStream("Crash Course");
+                    setSelectedFormat(null);
+                  }}
+                  className="group bg-white border border-slate-200/80 hover:border-amber-300 rounded-2xl p-5 space-y-3.5 transition-all duration-200 hover:shadow-md shadow-xs cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-sm text-slate-900 group-hover:text-slate-950 transition-colors">
+                            Crash Course
+                          </h3>
+                          <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60">
+                            Fast Track
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          High-intensity exam sprint batches and fast-track revision modules.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="w-7 h-7 rounded-full bg-slate-50 border border-slate-200/70 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 text-slate-400 flex items-center justify-center transition-all duration-200 shadow-2xs shrink-0">
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-baseline justify-between">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-extrabold text-slate-950 tracking-tight font-feature-settings-['tnum']">{crashCount}</span>
+                      <span className="text-xs text-slate-500 font-medium">student{crashCount === 1 ? "" : "s"}</span>
+                    </div>
+
+                    <span className="text-xs font-semibold text-slate-700 group-hover:text-slate-950 flex items-center gap-1 transition-colors">
+                      <span>Explore Batches</span>
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TIER 4: DELIVERY FORMAT CARDS OR CRASH BATCHES (When stream is chosen, but selectedFormat is null) */}
+      {/* ========================================================================= */}
+      {activeProgram && selectedClass && selectedStream && !selectedFormat && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/80">
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  setSelectedStream(null);
+                  setSelectedFormat(null);
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Back to Course Streams
+              </button>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                {activeProgram} — Class {selectedClass} • {selectedStream}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {streamStudents.length} enrolled student{streamStudents.length === 1 ? "" : "s"}. Click a {isCrash ? "crash batch" : "delivery format"} to open its roster.
               </p>
             </div>
 
             <Link
-              href={`/students/new?program=${encodeURIComponent(activeProgram)}&class=${selectedClass}`}
+              href={`/students/new?program=${encodeURIComponent(activeProgram)}&class=${selectedClass}&stream=${encodeURIComponent(selectedStream)}`}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors self-start sm:self-auto"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              Admit Student to Class {selectedClass}
+              Admit Student to {selectedStream}
             </Link>
           </div>
 
-          {/* Delivery Format Cards */}
+          {/* Delivery Format or Crash Batch Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {formatOptions.map((fmt) => {
-              const count = classStudents.filter((s) => isStudentInFormat(s, fmt.id)).length;
+              const count = streamStudents.filter((s) => isStudentInFormat(s, fmt.id)).length;
 
               return (
                 <div
@@ -825,16 +1037,16 @@ export default function StudentsDirectoryPage() {
             })}
           </div>
 
-          {/* Combined Class Roster Quick Bar */}
+          {/* Combined Stream Roster Quick Bar */}
           <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 flex items-center justify-between">
             <span className="text-xs font-medium text-slate-600">
-              View all {classStudents.length} students enrolled in Class {selectedClass} across all formats
+              View all {streamStudents.length} students enrolled in Class {selectedClass} ({selectedStream})
             </span>
             <button
               onClick={() => setSelectedFormat("All")}
               className="text-xs font-semibold text-slate-900 hover:text-black cursor-pointer underline underline-offset-2"
             >
-              Combined Class Roster →
+              Combined {selectedStream} Roster →
             </button>
           </div>
 
@@ -842,9 +1054,9 @@ export default function StudentsDirectoryPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* TIER 4: STUDENT ROSTER VIEW (When activeProgram, selectedClass & selectedFormat are chosen) */}
+      {/* TIER 5: STUDENT ROSTER VIEW (When activeProgram, selectedClass, selectedStream & selectedFormat are chosen) */}
       {/* ========================================================================= */}
-      {activeProgram && selectedClass && selectedFormat && (
+      {activeProgram && selectedClass && selectedStream && selectedFormat && (
         <div className="space-y-6 animate-in fade-in duration-150">
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/80">
@@ -854,10 +1066,10 @@ export default function StudentsDirectoryPage() {
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Back to Format Cards
+                Back to {isCrash ? "Crash Batches" : "Delivery Formats"}
               </button>
               <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                {activeProgram} — Class {selectedClass} ({selectedFormat === "All" ? "All Formats" : selectedFormat})
+                {activeProgram} — Class {selectedClass} • {selectedStream} ({selectedFormat === "All" ? `All ${selectedStream} Formats` : selectedFormat})
               </h2>
               <p className="text-xs text-slate-500">
                 {rosterStudents.length} student{rosterStudents.length === 1 ? "" : "s"} listed in this roster
@@ -865,7 +1077,7 @@ export default function StudentsDirectoryPage() {
             </div>
 
             <Link
-              href={`/students/new?program=${encodeURIComponent(activeProgram)}&class=${selectedClass}&mode=${encodeURIComponent(selectedFormat === "All" ? "1:1 Tutoring" : selectedFormat)}`}
+              href={`/students/new?program=${encodeURIComponent(activeProgram)}&class=${selectedClass}&stream=${encodeURIComponent(selectedStream)}&mode=${encodeURIComponent(selectedFormat === "All" ? (isCrash ? "Crash Course" : "1:1 Tutoring") : selectedFormat)}`}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors self-start sm:self-auto"
             >
               <UserPlus className="w-3.5 h-3.5" />

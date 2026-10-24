@@ -100,6 +100,12 @@ export async function GET(req: NextRequest) {
         admission_date: studentInfo.admission_date || "—",
         program: studentInfo.program || "CBSE Online",
         class_level: studentInfo.class_level || "10th",
+        course_type: studentInfo.course_type || (
+          studentInfo.delivery_mode === "Crash Course" ||
+          studentInfo.batch_name?.toLowerCase().includes("crash")
+            ? "Crash Course"
+            : "Regular"
+        ),
         delivery_mode: studentInfo.delivery_mode || "1:1 Tutoring",
         batch_name: studentInfo.batch_name || l.batch,
         status: studentInfo.status || "Active",
